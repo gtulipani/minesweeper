@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.minesweeper.bean.GameBean;
 import com.minesweeper.bean.GameCellBean;
+import com.minesweeper.bean.GameCellOperation;
 import com.minesweeper.bean.GameCellOperationResponse;
 import com.minesweeper.component.GameCellHelper;
 import com.minesweeper.entity.Game;
@@ -40,13 +41,13 @@ public class GameServiceImpl implements GameService {
 
 	@Override
 	public GameBean create(GameBean gameBean) {
-		Set<GameCellBean> gameCells = gameCellService.generateRandomMines(gameBean);
+		Set<GameCellBean> gameCells = gameCellService.populateCells(gameBean);
 		return createInternal(gameBean, gameCells);
 	}
 
 	/**
 	 * Method is public in order to have Transactional scope. Logic in different method because
-	 * {@link GameCellService#generateRandomMines(GameBean)} could take a lot of time.
+	 * {@link GameCellService#populateCells(GameBean)} could take a lot of time.
 	 */
 	@Transactional
 	public GameBean createInternal(GameBean gameBean, Set<GameCellBean> gameCellBeans) {
@@ -71,11 +72,17 @@ public class GameServiceImpl implements GameService {
 		GameBean gameBean = gameRepository.findById(gameId)
 				.map(gameMapper::mapToBean)
 				.orElseThrow(() -> new GameNotFoundException(gameId));
+		GameCellOperation gameCellOperation = GameCellOperation.builder()
+				.cellOperation(cellOperation)
+				.gameBean(gameBean)
+				.row(row)
+				.column(column)
+				.build();
 
 		try {
 			return GameCellOperationResponse.builder()
 					.gameCellOperationStatus(GameCellOperationStatus.SUCCESS)
-					.gameCellBeans(gameCellService.performOperation(gameBean, cellOperation, row, column))
+					.gameCellBeans(gameCellService.performOperation(gameCellOperation))
 					.build();
 		} catch (MineExplodedException e) {
 			log.info("A mine has exploded in position with row={} and column={} in game={}",
@@ -87,7 +94,7 @@ public class GameServiceImpl implements GameService {
 					.gameCellOperationStatus(GameCellOperationStatus.GAME_LOST)
 					.gameCellBeans(gameBean.getGameCells().stream()
 							.filter(gameCellHelper::isMine)
-							.collect(Collectors.toList()))
+							.collect(Collectors.toSet()))
 					.build();
 		}
 	}

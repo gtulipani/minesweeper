@@ -1,51 +1,75 @@
 package com.minesweeper.service.impl;
 
+import static com.minesweeper.enums.CellOperation.FLAGGED;
+import static com.minesweeper.enums.CellOperation.QUESTION_MARKED;
+import static com.minesweeper.enums.CellOperation.REVEALED;
+
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
-import lombok.AllArgsConstructor;
-
 import org.apache.commons.lang3.tuple.Pair;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import com.minesweeper.bean.GameBean;
 import com.minesweeper.bean.GameCellBean;
+import com.minesweeper.bean.GameCellOperation;
 import com.minesweeper.component.GameCellHelper;
 import com.minesweeper.enums.CellContent;
 import com.minesweeper.enums.CellOperation;
+import com.minesweeper.exception.CellOperationNotSupportedException;
 import com.minesweeper.exception.MineExplodedException;
+import com.minesweeper.repository.GameCellRepository;
 import com.minesweeper.service.GameCellService;
 
-@AllArgsConstructor
 @Service
 public class GameCellServiceImpl implements GameCellService {
+	private final GameCellRepository gameCellRepository;
 	private final GameCellHelper gameCellHelper;
+	private final Map<CellOperation, Function<GameCellOperation, Set<GameCellBean>>> cellOperationFunction = ImmutableMap.of(
+			REVEALED, revealedOperationFunction(),
+			FLAGGED, flaggedOperationFunction(),
+			QUESTION_MARKED, questionMarkedFunction());
 
-	@Override
-	public Set<GameCellBean> generateRandomMines(GameBean gameBean) {
-		long rows = gameBean.getRows();
-		long columns = gameBean.getColumns();
-		long mines = gameBean.getMines();
-
-		return populateWithMines(rows, columns, mines);
+	@Autowired
+	public GameCellServiceImpl(GameCellRepository gameCellRepository,
+							   GameCellHelper gameCellHelper) {
+		this.gameCellRepository = gameCellRepository;
+		this.gameCellHelper = gameCellHelper;
 	}
 
 	@Override
-	public List<GameCellBean> performOperation(GameBean gameBean, CellOperation cellOperation, Long row, Long column) {
-		if (gameBean.getGameCells().stream()
-				.filter(gameCellHelper::isMine)
-				.anyMatch(gameCellBean -> hasPosition(gameCellBean, row, column))) {
-			throw new MineExplodedException(row, column, gameBean);
-		}
-		return Collections.emptyList();
+	public Set<GameCellBean> populateCells(GameBean gameBean) {
+		long rows = gameBean.getRows();
+		long columns = gameBean.getColumns();
+		long minesQuantity = gameBean.getMines();
+
+		Set<GameCellBean> cells = populateWithMines(rows, columns, minesQuantity);
+		return populateWithNumbers(cells, rows, columns);
+	}
+
+	@Override
+	public Set<GameCellBean> performOperation(GameCellOperation gameCellOperation) {
+		return cellOperationFunction.entrySet().stream()
+				.filter(entry -> entry.getKey().equals(gameCellOperation.getCellOperation()))
+				.findFirst()
+				.orElseThrow(() -> new CellOperationNotSupportedException(gameCellOperation.getCellOperation()))
+				.getValue()
+				.apply(gameCellOperation);
 	}
 
 	/**
@@ -107,11 +131,83 @@ public class GameCellServiceImpl implements GameCellService {
 	}
 
 	/**
-	 * Private method that checks if the {@link GameCellBean} passed as parameter has the position defined by the parameters
+	 * Private method that iterates over all the possible cells and fills the missing cells with NUMBER
 	 */
 	@VisibleForTesting
-	boolean hasPosition(GameCellBean gameCellBean, Long row, Long column) {
-		return row.longValue() == gameCellBean.getRow().longValue() &&
-				column.longValue() == gameCellBean.getColumn().longValue();
+	Set<GameCellBean> populateWithNumbers(Set<GameCellBean> cells, Long rows, Long columns) {
+		// We create an extra variable to compare always with the mines
+		Set<GameCellBean> alreadyCalculatedMines = new HashSet<>(cells);
+		for(long i = 1; i <= rows; i++) {
+			for (long j = 1; j <= columns; j++) {
+				long currentRow = i;
+				long currentColumn = j;
+				if (alreadyCalculatedMines.stream().noneMatch(cell -> (cell.getRow() == currentRow) && (cell.getColumn() == currentColumn))) {
+					// If it wasn't part of the cells, then it's not a mine, we create a number
+					cells.add(GameCellBean.builder()
+							.row(i)
+							.column(j)
+							.cellOperation(CellOperation.NONE)
+							.cellContent(CellContent.NUMBER)
+							.build());
+				}
+			}
+		}
+		return cells;
+	}
+
+	/**
+	 * Private method that contains all the logic to be done when the user is trying to reveal the content from a cell
+	 */
+	@VisibleForTesting
+	Function<GameCellOperation, Set<GameCellBean>> revealedOperationFunction() {
+		return gameCellOperation -> {
+			Long row = gameCellOperation.getRow();
+			Long column = gameCellOperation.getColumn();
+			GameBean gameBean = gameCellOperation.getGameBean();
+			if (gameBean.getGameCells().stream()
+					.filter(gameCellHelper::isMine)
+					.anyMatch(gameCellBean -> gameCellHelper.hasPosition(gameCellBean, row, column))) {
+				throw new MineExplodedException(row, column, gameBean);
+			} else {
+				// calculate how many mines are around and update the values
+				// if minesAround is zero then must call the neighboorhoods and reapply same logic
+				return Collections.emptySet();
+			}
+		};
+	}
+
+	/**
+	 * Private method that contains all the logic to be done when the user is trying to flag a cell
+	 */
+	@VisibleForTesting
+	Function<GameCellOperation, Set<GameCellBean>> flaggedOperationFunction() {
+		return gameCellOperation -> updateCellWithCellOperation(gameCellOperation, FLAGGED);
+	}
+
+	/**
+	 * Private method that contains all the logic to be done when the user is trying to mark a cell with a question mark
+	 */
+	@VisibleForTesting
+	Function<GameCellOperation, Set<GameCellBean>> questionMarkedFunction() {
+		return gameCellOperation -> updateCellWithCellOperation(gameCellOperation, QUESTION_MARKED);
+	}
+
+	@VisibleForTesting
+	@Transactional
+	Set<GameCellBean> updateCellWithCellOperation(GameCellOperation gameCellOperation, CellOperation cellOperation) {
+		Long row = gameCellOperation.getRow();
+		Long column = gameCellOperation.getColumn();
+		GameBean gameBean = gameCellOperation.getGameBean();
+
+		// We update the status from it in the DB
+		GameCellBean existingCell = gameBean.getGameCells().stream()
+				.filter(cell -> gameCellHelper.hasPosition(cell, row, column))
+				.findFirst()
+				.orElseThrow(() -> new RuntimeException("Cell is not found in the DB. Unexpected error."));
+
+		gameCellRepository.updateCellOperationById(cellOperation, existingCell.getId());
+		existingCell.setCellOperation(cellOperation);
+
+		return Sets.newHashSet(existingCell);
 	}
 }

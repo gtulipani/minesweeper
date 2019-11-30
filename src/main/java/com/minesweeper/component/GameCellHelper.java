@@ -15,4 +15,13 @@ public class GameCellHelper {
 	public boolean isMine(GameCellBean gameCellBean) {
 		return CellContent.MINE.equals(gameCellBean.getCellContent());
 	}
+
+	/**
+	 * Private method that checks if the {@link GameCellBean} passed as parameter has the position defined by the parameters
+	 */
+	@VisibleForTesting
+	public boolean hasPosition(GameCellBean gameCellBean, Long row, Long column) {
+		return row.longValue() == gameCellBean.getRow().longValue() &&
+				column.longValue() == gameCellBean.getColumn().longValue();
+	}
 }

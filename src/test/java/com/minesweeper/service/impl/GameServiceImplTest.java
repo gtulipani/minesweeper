@@ -6,8 +6,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -19,6 +17,7 @@ import org.testng.annotations.Test;
 import com.google.common.collect.Sets;
 import com.minesweeper.bean.GameBean;
 import com.minesweeper.bean.GameCellBean;
+import com.minesweeper.bean.GameCellOperation;
 import com.minesweeper.bean.GameCellOperationResponse;
 import com.minesweeper.component.GameCellHelper;
 import com.minesweeper.entity.Game;
@@ -31,6 +30,7 @@ import com.minesweeper.mapper.GameMapper;
 import com.minesweeper.mother.GameBeanMother;
 import com.minesweeper.mother.GameCellBeanMother;
 import com.minesweeper.mother.GameCellMother;
+import com.minesweeper.mother.GameCellOperationMother;
 import com.minesweeper.mother.GameCellOperationResponseMother;
 import com.minesweeper.mother.GameMother;
 import com.minesweeper.repository.GameCellRepository;
@@ -67,7 +67,7 @@ public class GameServiceImplTest {
 		Set<GameCell> gameCells = Sets.newHashSet(GameCellMother.mine().build());
 		Game requestGameMappedWithCellsAndId = GameMother.basic().build();
 		GameBean expectedResponse = GameBeanMother.basic().build();
-		when(gameCellService.generateRandomMines(requestGame)).thenReturn(gameCellBeans);
+		when(gameCellService.populateCells(requestGame)).thenReturn(gameCellBeans);
 		when(gameCellMapper.mapToEntity(gameCellBeans)).thenReturn(gameCells);
 		when(gameMapper.mapToEntity(requestGame)).thenReturn(requestGameMapped);
 		when(gameRepository.save(any(Game.class))).thenReturn(requestGameMappedWithCellsAndId);
@@ -100,11 +100,15 @@ public class GameServiceImplTest {
 		CellOperation cellOperation = CellOperation.REVEALED;
 		Long row = 1L;
 		Long column = 1L;
-		List<GameCellBean> cellBeans = Collections.singletonList(GameCellBeanMother.number().build());
+		Set<GameCellBean> cellBeans = Sets.newHashSet(GameCellBeanMother.number().build());
+		GameCellOperation gameCellOperation = GameCellOperationMother.revealed()
+				.row(row)
+				.column(column)
+				.build();
 		GameCellOperationResponse expectedResponse = GameCellOperationResponseMother.success().build();
 		when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
 		when(gameMapper.mapToBean(game)).thenReturn(gameBean);
-		when(gameCellService.performOperation(gameBean, cellOperation, row, column)).thenReturn(cellBeans);
+		when(gameCellService.performOperation(gameCellOperation)).thenReturn(cellBeans);
 
 		assertThat(gameService.performOperation(gameId, cellOperation, row, column)).isEqualTo(expectedResponse);
 	}
@@ -138,11 +142,11 @@ public class GameServiceImplTest {
 		Long row = 1L;
 		Long column = 1L;
 		GameCellOperationResponse expectedResponse = GameCellOperationResponseMother.gameLost()
-				.gameCellBeans(Collections.singletonList(mine))
+				.gameCellBeans(Sets.newHashSet(mine))
 				.build();
 		when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
 		when(gameMapper.mapToBean(game)).thenReturn(gameBean);
-		when(gameCellService.performOperation(gameBean, cellOperation, row, column)).thenThrow(new MineExplodedException(row, column, gameBean));
+		when(gameCellService.performOperation(any(GameCellOperation.class))).thenThrow(new MineExplodedException(row, column, gameBean));
 		when(gameCellHelper.isMine(number)).thenReturn(false);
 		when(gameCellHelper.isMine(mine)).thenReturn(true);
 

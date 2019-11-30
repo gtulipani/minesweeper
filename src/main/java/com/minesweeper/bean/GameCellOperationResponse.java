@@ -1,6 +1,6 @@
 package com.minesweeper.bean;
 
-import java.util.List;
+import java.util.Set;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,5 +15,5 @@ import com.minesweeper.enums.GameCellOperationStatus;
 @Data
 public class GameCellOperationResponse {
 	private GameCellOperationStatus gameCellOperationStatus;
-	private List<GameCellBean> gameCellBeans;
+	private Set<GameCellBean> gameCellBeans;
 }
