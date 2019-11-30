@@ -1,0 +1,22 @@
+server:
+  port: 8090
+  tomcat:
+    max-threads: 30
+  use-forward-headers: true
+
+logging:
+  level:
+    ROOT: INFO
+
+## management endpoints are disabled, except for /info, /health and /prometheus
+management:
+  endpoint:
+    health:
+      show-details: when_authorized
+  endpoints:
+    web:
+      base-path: /
+      exposure:
+        include: health,info,loggers,metrics,prometheus
+      path-mapping:
+        loggers: api/v1/admin/loggers
