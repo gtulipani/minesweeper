@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.com/gtulipani/minesweeper.svg?branch=master)](https://travis-ci.com/gtulipani/minesweeper)
 # minesweeper
 ## Description
 Microservice that handles the Server required to play the classic game [Minesweeper](https://en.wikipedia.org/wiki/Minesweeper_(video_game)).
@@ -25,3 +26,7 @@ The project is configured to run the migration scripts on start.
 ### Configuration
 Flyway migration can be disabled completely by disabling `flyway.enabled`. On certain occasions, a SQL script might be
 changed after being run. Flyway validates the checksum of each migration and will report error on startup. Enable `flyway.repair` to correct this situation.
+
+## CI
+[Travis CI](https://travis-ci.org/) has been chosen as CI Software. It's already configured and runs all the UT for
+every PR and Build (including `master`). The status can be found at the top of this file.
