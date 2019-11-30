@@ -9,6 +9,8 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
+import lombok.AllArgsConstructor;
+
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Service;
 
@@ -16,12 +18,17 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import com.minesweeper.bean.GameBean;
 import com.minesweeper.bean.GameCellBean;
+import com.minesweeper.component.GameCellHelper;
 import com.minesweeper.enums.CellContent;
 import com.minesweeper.enums.CellOperation;
+import com.minesweeper.exception.MineExplodedException;
 import com.minesweeper.service.GameCellService;
 
+@AllArgsConstructor
 @Service
 public class GameCellServiceImpl implements GameCellService {
+	private final GameCellHelper gameCellHelper;
+
 	@Override
 	public Set<GameCellBean> generateRandomMines(GameBean gameBean) {
 		long rows = gameBean.getRows();
@@ -33,6 +40,11 @@ public class GameCellServiceImpl implements GameCellService {
 
 	@Override
 	public List<GameCellBean> performOperation(GameBean gameBean, CellOperation cellOperation, Long row, Long column) {
+		if (gameBean.getGameCells().stream()
+				.filter(gameCellHelper::isMine)
+				.anyMatch(gameCellBean -> hasPosition(gameCellBean, row, column))) {
+			throw new MineExplodedException(row, column, gameBean);
+		}
 		return Collections.emptyList();
 	}
 
@@ -92,5 +104,14 @@ public class GameCellServiceImpl implements GameCellService {
 				.cellContent(CellContent.MINE)
 				.cellOperation(CellOperation.NONE)
 				.build();
+	}
+
+	/**
+	 * Private method that checks if the {@link GameCellBean} passed as parameter has the position defined by the parameters
+	 */
+	@VisibleForTesting
+	boolean hasPosition(GameCellBean gameCellBean, Long row, Long column) {
+		return row.longValue() == gameCellBean.getRow().longValue() &&
+				column.longValue() == gameCellBean.getColumn().longValue();
 	}
 }

@@ -19,15 +19,19 @@ import org.testng.annotations.Test;
 import com.google.common.collect.Sets;
 import com.minesweeper.bean.GameBean;
 import com.minesweeper.bean.GameCellBean;
+import com.minesweeper.bean.GameCellOperationResponse;
+import com.minesweeper.component.GameCellHelper;
 import com.minesweeper.entity.Game;
 import com.minesweeper.entity.GameCell;
 import com.minesweeper.enums.CellOperation;
 import com.minesweeper.exception.GameNotFoundException;
+import com.minesweeper.exception.MineExplodedException;
 import com.minesweeper.mapper.GameCellMapper;
 import com.minesweeper.mapper.GameMapper;
 import com.minesweeper.mother.GameBeanMother;
 import com.minesweeper.mother.GameCellBeanMother;
 import com.minesweeper.mother.GameCellMother;
+import com.minesweeper.mother.GameCellOperationResponseMother;
 import com.minesweeper.mother.GameMother;
 import com.minesweeper.repository.GameCellRepository;
 import com.minesweeper.repository.GameRepository;
@@ -44,13 +48,15 @@ public class GameServiceImplTest {
 	private GameCellRepository gameCellRepository;
 	@Mock
 	private GameCellService gameCellService;
+	@Mock
+	private GameCellHelper gameCellHelper;
 
 	private GameServiceImpl gameService;
 
 	@BeforeMethod
 	public void setup() {
 		MockitoAnnotations.initMocks(this);
-		gameService = new GameServiceImpl(gameMapper, gameCellMapper, gameRepository,gameCellRepository, gameCellService);
+		gameService = new GameServiceImpl(gameMapper, gameCellMapper, gameRepository,gameCellRepository, gameCellService, gameCellHelper);
 	}
 
 	@Test
@@ -94,10 +100,11 @@ public class GameServiceImplTest {
 		CellOperation cellOperation = CellOperation.REVEALED;
 		Long row = 1L;
 		Long column = 1L;
-		List<GameCellBean> expectedResponse = Collections.singletonList(GameCellBeanMother.number().build()); 
+		List<GameCellBean> cellBeans = Collections.singletonList(GameCellBeanMother.number().build());
+		GameCellOperationResponse expectedResponse = GameCellOperationResponseMother.success().build();
 		when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
 		when(gameMapper.mapToBean(game)).thenReturn(gameBean);
-		when(gameCellService.performOperation(gameBean, cellOperation, row, column)).thenReturn(expectedResponse);
+		when(gameCellService.performOperation(gameBean, cellOperation, row, column)).thenReturn(cellBeans);
 
 		assertThat(gameService.performOperation(gameId, cellOperation, row, column)).isEqualTo(expectedResponse);
 	}
@@ -116,5 +123,29 @@ public class GameServiceImplTest {
 				.withMessage("Game with id=%s not found", gameId);
 		verifyZeroInteractions(gameMapper);
 		verifyZeroInteractions(gameCellService);
+	}
+
+	@Test
+	public void testPerformOperation_whenMineExplodedExceptionIsThrown_returnGameLostWithListOfMines() {
+		Game game = GameMother.basic().build();
+		GameCellBean number = GameCellBeanMother.number().build();
+		GameCellBean mine = GameCellBeanMother.mine().build();
+		GameBean gameBean = GameBeanMother.basic()
+				.gameCells(Sets.newHashSet(number, mine))
+				.build();
+		Long gameId = game.getId();
+		CellOperation cellOperation = CellOperation.REVEALED;
+		Long row = 1L;
+		Long column = 1L;
+		GameCellOperationResponse expectedResponse = GameCellOperationResponseMother.gameLost()
+				.gameCellBeans(Collections.singletonList(mine))
+				.build();
+		when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+		when(gameMapper.mapToBean(game)).thenReturn(gameBean);
+		when(gameCellService.performOperation(gameBean, cellOperation, row, column)).thenThrow(new MineExplodedException(row, column, gameBean));
+		when(gameCellHelper.isMine(number)).thenReturn(false);
+		when(gameCellHelper.isMine(mine)).thenReturn(true);
+
+		assertThat(gameService.performOperation(gameId, cellOperation, row, column)).isEqualTo(expectedResponse);
 	}
 }

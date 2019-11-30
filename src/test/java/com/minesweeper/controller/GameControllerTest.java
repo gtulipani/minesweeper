@@ -6,9 +6,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import java.util.Collections;
-import java.util.List;
-
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
@@ -17,10 +14,10 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import com.minesweeper.bean.GameBean;
-import com.minesweeper.bean.GameCellBean;
+import com.minesweeper.bean.GameCellOperationResponse;
 import com.minesweeper.enums.CellOperation;
 import com.minesweeper.mother.GameBeanMother;
-import com.minesweeper.mother.GameCellBeanMother;
+import com.minesweeper.mother.GameCellOperationResponseMother;
 import com.minesweeper.service.GameService;
 
 public class GameControllerTest {
@@ -56,10 +53,10 @@ public class GameControllerTest {
 		CellOperation cellOperation = CellOperation.REVEALED;
 		Long row = 1L;
 		Long column = 1L;
-		List<GameCellBean> expectedResponse = Collections.singletonList(GameCellBeanMother.number().build());
+		GameCellOperationResponse expectedResponse = GameCellOperationResponseMother.success().build();
 		when(gameService.performOperation(gameId, cellOperation, row, column)).thenReturn(expectedResponse);
 
-		ResponseEntity<List<GameCellBean>> response = gameController.performOperation(gameId, cellOperation, row, column);
+		ResponseEntity<GameCellOperationResponse> response = gameController.performOperation(gameId, cellOperation, row, column);
 
 		assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 		assertThat(response.getBody()).isEqualTo(expectedResponse);

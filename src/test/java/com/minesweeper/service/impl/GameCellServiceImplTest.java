@@ -1,9 +1,15 @@
 package com.minesweeper.service.impl;
 
-import static com.minesweeper.utils.TestConstants.COLUMNS;
-import static com.minesweeper.utils.TestConstants.MINES;
-import static com.minesweeper.utils.TestConstants.ROWS;
+import static com.minesweeper.utils.TestConstants.COLUMNS_QUANTITY;
+import static com.minesweeper.utils.TestConstants.MINES_QUANTITY;
+import static com.minesweeper.utils.TestConstants.MINE_COLUMNS;
+import static com.minesweeper.utils.TestConstants.MINE_ROW;
+import static com.minesweeper.utils.TestConstants.ROWS_QUANTITY;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -14,23 +20,32 @@ import java.util.function.BiPredicate;
 import java.util.function.Supplier;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.assertj.core.util.Sets;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import com.google.common.collect.Sets;
 import com.minesweeper.bean.GameBean;
 import com.minesweeper.bean.GameCellBean;
+import com.minesweeper.component.GameCellHelper;
 import com.minesweeper.enums.CellContent;
+import com.minesweeper.enums.CellOperation;
+import com.minesweeper.exception.MineExplodedException;
 import com.minesweeper.mother.GameBeanMother;
 import com.minesweeper.mother.GameCellBeanMother;
 
 public class GameCellServiceImplTest {
+	@Mock
+	private GameCellHelper gameCellHelper;
+
 	private GameCellServiceImpl gameCellService;
 
 	@BeforeMethod
 	public void setup() {
-		gameCellService = new GameCellServiceImpl();
+		MockitoAnnotations.initMocks(this);
+		gameCellService = new GameCellServiceImpl(gameCellHelper);
 	}
 
 	@Test
@@ -48,23 +63,23 @@ public class GameCellServiceImplTest {
 
 	@Test
 	public void testPopulateWithMines() {
-		Set<GameCellBean> gameCellBeans = gameCellService.populateWithMines(ROWS, COLUMNS, MINES);
+		Set<GameCellBean> gameCellBeans = gameCellService.populateWithMines(ROWS_QUANTITY, COLUMNS_QUANTITY, MINES_QUANTITY);
 
-		assertThat(gameCellBeans.size()).isEqualTo(MINES);
+		assertThat(gameCellBeans.size()).isEqualTo(MINES_QUANTITY);
 		Set<Pair<Long, Long>> rowColumnPairs = Sets.newHashSet();
 		gameCellBeans.stream().forEach(gameCellBean -> {
 			assertThat(gameCellBean.getCellContent()).isEqualTo(CellContent.MINE);
 			rowColumnPairs.add(Pair.of(gameCellBean.getRow(), gameCellBean.getColumn()));
 		});
-		assertThat(rowColumnPairs.size()).isEqualTo(MINES);
+		assertThat(rowColumnPairs.size()).isEqualTo(MINES_QUANTITY);
 	}
 
 	@Test
 	public void testGetNewRandomPairInRange_createsPairAndFinishes() {
-		Supplier<Long> rowSupplier = () -> ROWS;
-		Supplier<Long> columnSupplier = () -> COLUMNS;
+		Supplier<Long> rowSupplier = () -> ROWS_QUANTITY;
+		Supplier<Long> columnSupplier = () -> COLUMNS_QUANTITY;
 		BiPredicate<Long, Long> rowColumnVerifier = (row, column) -> true;
-		Pair<Long, Long> expectedPair = Pair.of(ROWS, COLUMNS);
+		Pair<Long, Long> expectedPair = Pair.of(ROWS_QUANTITY, COLUMNS_QUANTITY);
 
 		assertThat(gameCellService.getNewRandomPairInRange(rowSupplier, columnSupplier, rowColumnVerifier)).isEqualTo(expectedPair);
 	}
@@ -96,9 +111,49 @@ public class GameCellServiceImplTest {
 
 	@Test
 	public void testMapToGameCellBean() {
-		Pair<Long, Long> pair = Pair.of(ROWS, COLUMNS);
+		Pair<Long, Long> pair = Pair.of(MINE_ROW, MINE_COLUMNS);
 		GameCellBean gameCellBean = GameCellBeanMother.mine().build();
 
 		assertThat(gameCellService.mapToGameCellBean(pair)).isEqualTo(gameCellBean);
+	}
+
+	@Test
+	public void testPerformOperation_onNumber_doesntThrowException() {
+		GameCellBean number = GameCellBeanMother.number().build();
+		GameCellBean mine = GameCellBeanMother.mine().build();
+		GameBean gameBean = GameBeanMother.basic()
+				.gameCells(Sets.newHashSet(number, mine))
+				.build();
+		CellOperation cellOperation = CellOperation.REVEALED;
+		Long row = number.getRow();
+		Long column = number.getColumn();
+		when(gameCellHelper.isMine(number)).thenReturn(false);
+		when(gameCellHelper.isMine(mine)).thenReturn(true);
+
+		assertThatCode(() -> gameCellService.performOperation(gameBean, cellOperation, row, column))
+				.doesNotThrowAnyException();
+		verify(gameCellHelper, times(1)).isMine(number);
+		verify(gameCellHelper, times(1)).isMine(mine);
+		verifyNoMoreInteractions(gameCellHelper);
+	}
+
+	@Test
+	public void testPerformOperation_onMine_throwMineExplodedException() {
+		GameCellBean number = GameCellBeanMother.number().build();
+		GameCellBean mine = GameCellBeanMother.mine().build();
+		GameBean gameBean = GameBeanMother.basic()
+				.gameCells(Sets.newHashSet(number, mine))
+				.build();
+		CellOperation cellOperation = CellOperation.REVEALED;
+		Long row = mine.getRow();
+		Long column = mine.getColumn();
+		when(gameCellHelper.isMine(number)).thenReturn(false);
+		when(gameCellHelper.isMine(mine)).thenReturn(true);
+
+		assertThatExceptionOfType(MineExplodedException.class)
+				.isThrownBy(() -> gameCellService.performOperation(gameBean, cellOperation, row, column))
+				.withMessage("Mine exploded in row=%s, column=%s on game with id=%s", row, column, gameBean.getId());
+		verify(gameCellHelper, atLeastOnce()).isMine(any(GameCellBean.class));
+		verifyNoMoreInteractions(gameCellHelper);
 	}
 }

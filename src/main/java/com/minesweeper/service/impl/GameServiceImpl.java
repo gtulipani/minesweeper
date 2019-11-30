@@ -1,8 +1,8 @@
 package com.minesweeper.service.impl;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,10 +12,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.minesweeper.bean.GameBean;
 import com.minesweeper.bean.GameCellBean;
+import com.minesweeper.bean.GameCellOperationResponse;
+import com.minesweeper.component.GameCellHelper;
 import com.minesweeper.entity.Game;
 import com.minesweeper.entity.GameCell;
 import com.minesweeper.enums.CellOperation;
+import com.minesweeper.enums.GameCellOperationStatus;
 import com.minesweeper.exception.GameNotFoundException;
+import com.minesweeper.exception.MineExplodedException;
 import com.minesweeper.mapper.GameCellMapper;
 import com.minesweeper.mapper.GameMapper;
 import com.minesweeper.repository.GameCellRepository;
@@ -32,6 +36,7 @@ public class GameServiceImpl implements GameService {
 	private final GameRepository gameRepository;
 	private final GameCellRepository gameCellRepository;
 	private final GameCellService gameCellService;
+	private final GameCellHelper gameCellHelper;
 
 	@Override
 	public GameBean create(GameBean gameBean) {
@@ -62,11 +67,28 @@ public class GameServiceImpl implements GameService {
 
 	@Override
 	@Transactional
-	public List<GameCellBean> performOperation(Long gameId, CellOperation cellOperation, Long row, Long column) {
+	public GameCellOperationResponse performOperation(Long gameId, CellOperation cellOperation, Long row, Long column) {
 		GameBean gameBean = gameRepository.findById(gameId)
 				.map(gameMapper::mapToBean)
 				.orElseThrow(() -> new GameNotFoundException(gameId));
 
-		return gameCellService.performOperation(gameBean, cellOperation, row, column);
+		try {
+			return GameCellOperationResponse.builder()
+					.gameCellOperationStatus(GameCellOperationStatus.SUCCESS)
+					.gameCellBeans(gameCellService.performOperation(gameBean, cellOperation, row, column))
+					.build();
+		} catch (MineExplodedException e) {
+			log.info("A mine has exploded in position with row={} and column={} in game={}",
+					row,
+					column,
+					gameBean);
+			// update game status
+			return GameCellOperationResponse.builder()
+					.gameCellOperationStatus(GameCellOperationStatus.GAME_LOST)
+					.gameCellBeans(gameBean.getGameCells().stream()
+							.filter(gameCellHelper::isMine)
+							.collect(Collectors.toList()))
+					.build();
+		}
 	}
 }
