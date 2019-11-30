@@ -7,11 +7,13 @@ import com.minesweeper.bean.GameBean;
 public class GameBeanMother {
 	public static GameBean.GameBeanBuilder basic() {
 		return GameBean.builder()
-				.id(ID);
+				.id(ID)
+				.gameConfiguration(GameConfigurationBeanMother.basic().build());
 	}
 
 	public static GameBean.GameBeanBuilder empty() {
 		return GameBean.builder()
-				.id(null);
+				.id(null)
+				.gameConfiguration(null);
 	}
 }

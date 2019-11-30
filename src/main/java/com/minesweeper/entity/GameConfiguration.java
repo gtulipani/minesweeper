@@ -3,12 +3,11 @@ package com.minesweeper.entity;
 import java.io.Serializable;
 import java.time.Instant;
 
-import javax.persistence.CascadeType;
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
 
@@ -25,8 +24,8 @@ import org.hibernate.annotations.GenericGenerator;
 @AllArgsConstructor
 @Entity
 @Data
-@Table(name = "games")
-public class Game extends TimestampedEntity implements Serializable {
+@Table(name = "game_configurations")
+public class GameConfiguration extends TimestampedEntity implements Serializable {
 	private static final long serialVersionUID = -6507963547063710509L;
 
 	@Id
@@ -34,14 +33,24 @@ public class Game extends TimestampedEntity implements Serializable {
 	@GenericGenerator(name = "native", strategy = "native")
 	private Long id;
 
-	@OneToOne(cascade = CascadeType.ALL)
-	@JoinColumn(name = "game_configuration_id", referencedColumnName = "id")
-	private GameConfiguration gameConfiguration;
+	@Column(name = "rows_quantity", nullable = false)
+	private Long rows;
+
+	@Column(name = "columns_quantity", nullable = false)
+	private Long columns;
+
+	@Column(name = "mines_quantity", nullable = false)
+	private Long mines;
+
+	@OneToOne(mappedBy = "gameConfiguration")
+	private Game game;
 
 	@Builder
-	public Game(Long id, GameConfiguration gameConfiguration, Instant createdOn, Instant lastModified) {
+	public GameConfiguration(Long id, Long rows, Long columns, Long mines, Instant createdOn, Instant lastModified) {
 		super(createdOn, lastModified);
 		this.id = id;
-		this.gameConfiguration = gameConfiguration;
+		this.rows = rows;
+		this.columns = columns;
+		this.mines = mines;
 	}
 }

@@ -11,13 +11,15 @@ public class GameMother {
 		return Game.builder()
 				.id(ID)
 				.createdOn(CREATED_ON)
-				.lastModified(LAST_MODIFIED);
+				.lastModified(LAST_MODIFIED)
+				.gameConfiguration(GameConfigurationMother.basic().build());
 	}
 
-	public static Game.GameBuilder empty() {
+	public static Game.GameBuilder withoutId() {
 		return Game.builder()
 				.id(null)
 				.createdOn(null)
-				.lastModified(null);
+				.lastModified(null)
+				.gameConfiguration(GameConfigurationMother.basic().build());
 	}
 }

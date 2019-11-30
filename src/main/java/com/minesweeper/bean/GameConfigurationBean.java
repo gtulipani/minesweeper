@@ -9,7 +9,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @Data
-public class GameBean {
+public class GameConfigurationBean {
 	private Long id;
-	private GameConfigurationBean gameConfiguration;
+	private int rows;
+	private int columns;
+	private int mines;
 }
