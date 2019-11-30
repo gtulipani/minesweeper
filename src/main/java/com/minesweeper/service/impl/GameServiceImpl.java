@@ -1,5 +1,7 @@
 package com.minesweeper.service.impl;
 
+import static com.minesweeper.enums.GameStatus.FINISHED_STATUS;
+
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -100,5 +102,23 @@ public class GameServiceImpl implements GameService {
 							.collect(Collectors.toSet()))
 					.build();
 		}
+	}
+
+	@Override
+	@Transactional
+	public void pause(Long gameId) {
+		gameRepository.findByIdAndGameStatusNotIn(gameId, FINISHED_STATUS)
+				.orElseThrow(() -> new GameNotFoundException(gameId));
+		
+		gameRepository.updateGameStatusById(GameStatus.PAUSED, gameId);
+	}
+
+	@Override
+	@Transactional
+	public void resume(Long gameId) {
+		gameRepository.findByIdAndGameStatusNotIn(gameId, FINISHED_STATUS)
+				.orElseThrow(() -> new GameNotFoundException(gameId));
+
+		gameRepository.updateGameStatusById(GameStatus.PLAYING, gameId);
 	}
 }

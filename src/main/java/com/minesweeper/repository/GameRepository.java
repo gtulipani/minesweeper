@@ -1,6 +1,7 @@
 package com.minesweeper.repository;
 
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -13,6 +14,8 @@ import com.minesweeper.enums.GameStatus;
 
 @Repository
 public interface GameRepository extends JpaRepository<Game, Long> {
+	Optional<Game> findByIdAndGameStatusNotIn(Long id, Set<GameStatus> gameStatusSet);
+
 	Optional<Game> findByIdAndGameStatusIs(Long id, GameStatus gameStatus);
 
 	@Modifying

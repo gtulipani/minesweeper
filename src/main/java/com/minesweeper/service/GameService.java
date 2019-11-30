@@ -8,4 +8,8 @@ public interface GameService {
 	GameBean create(GameBean gameBean);
 
 	GameCellOperationResponse performOperation(Long gameId, CellOperation cellOperation, Long row, Long column);
+
+	void pause(Long gameId);
+
+	void resume(Long gameId);
 }

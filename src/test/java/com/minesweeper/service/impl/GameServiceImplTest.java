@@ -1,6 +1,8 @@
 package com.minesweeper.service.impl;
 
+import static com.minesweeper.enums.GameStatus.FINISHED_STATUS;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
@@ -161,6 +163,56 @@ public class GameServiceImplTest {
 		assertThat(gameService.performOperation(gameId, cellOperation, row, column)).isEqualTo(expectedResponse);
 		verify(gameRepository, times(1)).findByIdAndGameStatusIs(gameId, GameStatus.PLAYING);
 		verify(gameRepository, times(1)).updateGameStatusById(GameStatus.FINISHED_LOST, gameId);
+		verifyNoMoreInteractions(gameRepository);
+	}
+
+	@Test
+	public void testPause() {
+		Game game = GameMother.basic().build();
+		Long gameId = game.getId();
+		when(gameRepository.findByIdAndGameStatusNotIn(gameId, FINISHED_STATUS)).thenReturn(Optional.of(game));
+
+		assertThatCode(() -> gameService.pause(gameId)).doesNotThrowAnyException();
+		verify(gameRepository, times(1)).findByIdAndGameStatusNotIn(gameId, FINISHED_STATUS);
+		verify(gameRepository, times(1)).updateGameStatusById(GameStatus.PAUSED, gameId);
+		verifyNoMoreInteractions(gameRepository);
+	}
+
+	@Test
+	public void testPause_whenGameIsFinishedOrNotFound_throwsGameNotFoundException() {
+		Game game = GameMother.basic().build();
+		Long gameId = game.getId();
+		when(gameRepository.findByIdAndGameStatusNotIn(gameId, FINISHED_STATUS)).thenReturn(Optional.empty());
+
+		assertThatExceptionOfType(GameNotFoundException.class)
+				.isThrownBy(() -> gameService.pause(gameId))
+				.withMessage("Game with id=%s not found", gameId);
+		verify(gameRepository, times(1)).findByIdAndGameStatusNotIn(gameId, FINISHED_STATUS);
+		verifyNoMoreInteractions(gameRepository);
+	}
+
+	@Test
+	public void testResume() {
+		Game game = GameMother.basic().build();
+		Long gameId = game.getId();
+		when(gameRepository.findByIdAndGameStatusNotIn(gameId, FINISHED_STATUS)).thenReturn(Optional.of(game));
+
+		assertThatCode(() -> gameService.resume(gameId)).doesNotThrowAnyException();
+		verify(gameRepository, times(1)).findByIdAndGameStatusNotIn(gameId, FINISHED_STATUS);
+		verify(gameRepository, times(1)).updateGameStatusById(GameStatus.PLAYING, gameId);
+		verifyNoMoreInteractions(gameRepository);
+	}
+
+	@Test
+	public void testResume_whenGameIsFinishedOrNotFound_throwsGameNotFoundException() {
+		Game game = GameMother.basic().build();
+		Long gameId = game.getId();
+		when(gameRepository.findByIdAndGameStatusNotIn(gameId, FINISHED_STATUS)).thenReturn(Optional.empty());
+
+		assertThatExceptionOfType(GameNotFoundException.class)
+				.isThrownBy(() -> gameService.resume(gameId))
+				.withMessage("Game with id=%s not found", gameId);
+		verify(gameRepository, times(1)).findByIdAndGameStatusNotIn(gameId, FINISHED_STATUS);
 		verifyNoMoreInteractions(gameRepository);
 	}
 }

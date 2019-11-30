@@ -63,4 +63,16 @@ public class GameControllerTest {
 		verify(gameService, times(1)).performOperation(gameId, cellOperation, row, column);
 		verifyNoMoreInteractions(gameService);
 	}
+
+	@Test
+	public void testPause() {
+		Long gameId = GameBeanMother.basic().build().getId();
+		assertThat(gameController.pause(gameId).getStatusCode()).isEqualTo(HttpStatus.OK);
+	}
+
+	@Test
+	public void testResume() {
+		Long gameId = GameBeanMother.basic().build().getId();
+		assertThat(gameController.resume(gameId).getStatusCode()).isEqualTo(HttpStatus.OK);
+	}
 }

@@ -42,4 +42,20 @@ public class GameController {
 
 		return ResponseEntity.ok(gameService.performOperation(gameId, cellOperation, row, column));
 	}
+
+	@PostMapping(path = "/{gameId}/pause", produces = MediaType.APPLICATION_JSON)
+	public ResponseEntity<GameBean> pause(@PathVariable Long gameId) {
+		log.info("Received request to pause game with gameId={}", gameId);
+
+		gameService.pause(gameId);
+		return ResponseEntity.ok().build();
+	}
+
+	@PostMapping(path = "/{gameId}/resume", produces = MediaType.APPLICATION_JSON)
+	public ResponseEntity<GameBean> resume(@PathVariable Long gameId) {
+		log.info("Received request to resume game with gameId={}", gameId);
+
+		gameService.resume(gameId);
+		return ResponseEntity.ok().build();
+	}
 }
