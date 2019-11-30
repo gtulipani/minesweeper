@@ -31,9 +31,7 @@ public class GameControllerTest {
 
 	@Test
 	public void testCreate() {
-		GameBean request = GameBeanMother.basic()
-				.id(null)
-				.build();
+		GameBean request = GameBeanMother.empty().build();
 		GameBean expectedResponse = GameBeanMother.basic().build();
 		when(gameService.create(request)).thenReturn(expectedResponse);
 

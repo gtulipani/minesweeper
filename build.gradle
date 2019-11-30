@@ -3,17 +3,20 @@ import org.apache.tools.ant.filters.ReplaceTokens
 buildscript {
 	ext {
 		excludedFromCoverage = ['**/config/**','**/*Entity*']
-		springBootVersion = '2.0.9.RELEASE'
+		springBootVersion = '2.1.10.RELEASE'
+		springSecurityVersion = '2.4.0.RELEASE'
 		lombokVersion = '1.18.4'
 		testNGVersion = '6.14.3'
 		assertJVersion = '3.12.2'
 		mockitoVersion = '2.23.+'
-		mySQLConnectorVersion = '8.0.18'
+		mySQLConnectorVersion = '8.0.14'
 		javaXVersion = '2.2'
 		hibernateVersion = '3.5.6-Final'
 		orikaVersion = '1.5.4'
 		flywayVersion = '5.2.1'
 		javaXRsVersion = '1.0'
+		hibernateJava8Version = '5.4.9.Final'
+		comSunXmlBindVersion = '2.3.2'
 	}
 	repositories {
 		jcenter()
@@ -100,19 +103,20 @@ dependencies {
 	compile group: 'org.springframework.boot', name: 'spring-boot-starter-actuator', version: "${springBootVersion}"
 	compile group: 'org.springframework.boot', name: 'spring-boot-autoconfigure', version: "${springBootVersion}"
 	compile group: 'org.springframework.boot', name: 'spring-boot-starter', version: "${springBootVersion}"
+	compile group: 'org.springframework.boot', name: 'spring-boot-starter-data-jpa', version: "${springBootVersion}"
 	compile group: 'org.springframework.boot', name: 'spring-boot-starter-web', version: "${springBootVersion}"
 	compile group: 'org.springframework.boot', name: 'spring-boot-starter-logging', version: "${springBootVersion}"
 	compile group: 'org.springframework.boot', name: 'spring-boot-starter-security', version: "${springBootVersion}"
 	compile group: 'org.springframework.data', name: 'spring-data-jpa', version: "${springBootVersion}"
-	compile group: 'org.springframework.security.oauth', name: 'spring-security-oauth', version: "${springBootVersion}"
+	compile group: 'org.springframework.security.oauth', name: 'spring-security-oauth', version: "${springSecurityVersion}"
 	compile group: 'ch.qos.logback', name: 'logback-access', version: '1.2.3'
 	compile group: 'mysql', name: 'mysql-connector-java', version: "${mySQLConnectorVersion}"
 	compile group: 'javax.persistence', name: 'javax.persistence-api', version: "${javaXVersion}"
-	compile group: 'org.hibernate', name: 'hibernate-annotations', version: "${hibernateVersion}"
 	compile group: 'ma.glasnost.orika', name: 'orika-core', version: "${orikaVersion}"
 	compile group: 'org.flywaydb', name: 'flyway-core', version: "${flywayVersion}"
 	compile group: 'javax.ws.rs', name: 'javax.ws.rs', version: "${javaXRsVersion}"
-
+	compile group: 'org.hibernate', name: 'hibernate-java8', version: "${hibernateJava8Version}"
+	compile group: 'com.sun.xml.bind', name: 'jaxb-impl', version: "${comSunXmlBindVersion}"
 
 	testCompileOnly group: 'org.projectlombok', name: 'lombok', version: "${lombokVersion}"
 

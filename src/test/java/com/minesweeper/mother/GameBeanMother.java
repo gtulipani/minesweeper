@@ -9,4 +9,9 @@ public class GameBeanMother {
 		return GameBean.builder()
 				.id(ID);
 	}
+
+	public static GameBean.GameBeanBuilder empty() {
+		return GameBean.builder()
+				.id(null);
+	}
 }

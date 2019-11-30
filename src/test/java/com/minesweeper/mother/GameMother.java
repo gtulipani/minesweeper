@@ -13,4 +13,11 @@ public class GameMother {
 				.createdOn(CREATED_ON)
 				.lastModified(LAST_MODIFIED);
 	}
+
+	public static Game.GameBuilder empty() {
+		return Game.builder()
+				.id(null)
+				.createdOn(null)
+				.lastModified(null);
+	}
 }
