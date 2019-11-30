@@ -12,5 +12,6 @@ public class TestConstants {
 	public static final Instant LAST_MODIFIED = Instant.now();
 	public static final long ROWS = 20;
 	public static final long COLUMNS = 10;
-	public static final long MINES = 5; 
+	public static final long MINES = 5;
+	public static final long MINES_AROUND = 4;
 }

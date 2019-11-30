@@ -1,5 +1,6 @@
 package com.minesweeper.service.impl;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
@@ -28,6 +29,11 @@ public class GameCellServiceImpl implements GameCellService {
 		long mines = gameBean.getMines();
 
 		return populateWithMines(rows, columns, mines);
+	}
+
+	@Override
+	public List<GameCellBean> performOperation(GameBean gameBean, CellOperation cellOperation, Long row, Long column) {
+		return Collections.emptyList();
 	}
 
 	/**

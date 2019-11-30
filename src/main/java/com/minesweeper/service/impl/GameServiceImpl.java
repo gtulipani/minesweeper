@@ -1,6 +1,7 @@
 package com.minesweeper.service.impl;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import lombok.AllArgsConstructor;
@@ -13,6 +14,8 @@ import com.minesweeper.bean.GameBean;
 import com.minesweeper.bean.GameCellBean;
 import com.minesweeper.entity.Game;
 import com.minesweeper.entity.GameCell;
+import com.minesweeper.enums.CellOperation;
+import com.minesweeper.exception.GameNotFoundException;
 import com.minesweeper.mapper.GameCellMapper;
 import com.minesweeper.mapper.GameMapper;
 import com.minesweeper.repository.GameCellRepository;
@@ -55,5 +58,15 @@ public class GameServiceImpl implements GameService {
 		game = gameRepository.save(game);
 
 		return gameMapper.mapToBean(game);
+	}
+
+	@Override
+	@Transactional
+	public List<GameCellBean> performOperation(Long gameId, CellOperation cellOperation, Long row, Long column) {
+		GameBean gameBean = gameRepository.findById(gameId)
+				.map(gameMapper::mapToBean)
+				.orElseThrow(() -> new GameNotFoundException(gameId));
+
+		return gameCellService.performOperation(gameBean, cellOperation, row, column);
 	}
 }

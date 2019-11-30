@@ -1,5 +1,7 @@
 package com.minesweeper.controller;
 
+import java.util.List;
+
 import javax.ws.rs.core.MediaType;
 
 import lombok.AllArgsConstructor;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.minesweeper.bean.GameBean;
+import com.minesweeper.bean.GameCellBean;
 import com.minesweeper.enums.CellOperation;
 import com.minesweeper.service.GameService;
 
@@ -33,12 +36,12 @@ public class GameController {
 	}
 
 	@PostMapping(path = "/{gameId}/operation", consumes = MediaType.APPLICATION_JSON, produces = MediaType.APPLICATION_JSON)
-	public ResponseEntity<GameBean> performOperation(@PathVariable Integer gameId,
-										  @RequestParam CellOperation cellOperation,
-										  @RequestParam Integer row,
-										  @RequestParam Integer column) {
+	public ResponseEntity<List<GameCellBean>> performOperation(@PathVariable Long gameId,
+															   @RequestParam CellOperation cellOperation,
+															   @RequestParam Long row,
+															   @RequestParam Long column) {
 		log.info("Received request to perform cellOperation={} on gameId={} row={} and column={}", gameId, cellOperation, row, column);
 
-		return ResponseEntity.ok().build();
+		return ResponseEntity.ok(gameService.performOperation(gameId, cellOperation, row, column));
 	}
 }

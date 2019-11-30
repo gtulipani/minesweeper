@@ -1,9 +1,14 @@
 package com.minesweeper.service.impl;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.mockito.Mock;
@@ -16,6 +21,8 @@ import com.minesweeper.bean.GameBean;
 import com.minesweeper.bean.GameCellBean;
 import com.minesweeper.entity.Game;
 import com.minesweeper.entity.GameCell;
+import com.minesweeper.enums.CellOperation;
+import com.minesweeper.exception.GameNotFoundException;
 import com.minesweeper.mapper.GameCellMapper;
 import com.minesweeper.mapper.GameMapper;
 import com.minesweeper.mother.GameBeanMother;
@@ -77,5 +84,37 @@ public class GameServiceImplTest {
 		when(gameMapper.mapToBean(requestGameMappedWithCellsAndId)).thenReturn(expectedResponse);
 
 		assertThat(gameService.createInternal(requestGame, gameCellBeans)).isEqualTo(expectedResponse);
+	}
+
+	@Test
+	public void testPerformOperation() {
+		Game game = GameMother.basic().build();
+		GameBean gameBean = GameBeanMother.basic().build();
+		Long gameId = game.getId();
+		CellOperation cellOperation = CellOperation.REVEALED;
+		Long row = 1L;
+		Long column = 1L;
+		List<GameCellBean> expectedResponse = Collections.singletonList(GameCellBeanMother.number().build()); 
+		when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+		when(gameMapper.mapToBean(game)).thenReturn(gameBean);
+		when(gameCellService.performOperation(gameBean, cellOperation, row, column)).thenReturn(expectedResponse);
+
+		assertThat(gameService.performOperation(gameId, cellOperation, row, column)).isEqualTo(expectedResponse);
+	}
+
+	@Test
+	public void testPerformOperation_withInvalidGameId_throwsGameNotFoundException() {
+		Game game = GameMother.basic().build();
+		Long gameId = game.getId();
+		CellOperation cellOperation = CellOperation.REVEALED;
+		Long row = 1L;
+		Long column = 1L;
+		when(gameRepository.findById(gameId)).thenReturn(Optional.empty());
+
+		assertThatExceptionOfType(GameNotFoundException.class)
+				.isThrownBy(() -> gameService.performOperation(gameId, cellOperation, row, column))
+				.withMessage("Game with id=%s not found", gameId);
+		verifyZeroInteractions(gameMapper);
+		verifyZeroInteractions(gameCellService);
 	}
 }
