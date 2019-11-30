@@ -3,6 +3,8 @@ server:
   tomcat:
     max-threads: 30
   use-forward-headers: true
+  servlet:
+    context-path: /api/v1
 
 logging:
   level:
@@ -20,3 +22,38 @@ management:
         include: health,info,loggers,metrics,prometheus
       path-mapping:
         loggers: api/v1/admin/loggers
+
+# database
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/minesweeper?createDatabaseIfNotExist=true&verifyServerCertificate=false&useSSL=false
+    hikari:
+      jdbc-url: jdbc:mysql://localhost:3306/minesweeper?createDatabaseIfNotExist=true&verifyServerCertificate=false&useSSL=false
+      username: root
+      password: password
+    max-active: 20
+    max-idle: 20
+    test-while-idle : true
+    test-on-borrow : true
+    validation-query : SELECT 1
+    time-between-eviction-runs-millis : 5000
+    min-evictable-idle-time-millis : 60000
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  data:
+    jpa:
+      repositories:
+        bootstrap-mode: deferred
+    rest:
+      base-path: /api/v1
+  main:
+    allow-bean-definition-overriding: true
+  flyway:
+    enabled: true
+    clean-disabled: true
+    clean-on-validation-error: false
+    locations: classpath:/db/migration
