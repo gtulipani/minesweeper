@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/gtulipani/minesweeper.svg?branch=master)](https://travis-ci.com/gtulipani/minesweeper)
+[![Build Status](https://travis-ci.org/gtulipani/minesweeper.svg?branch=master)](https://travis-ci.org/gtulipani/minesweeper)
 # minesweeper
 ## Description
 Microservice that handles the Server required to play the classic game [Minesweeper](https://en.wikipedia.org/wiki/Minesweeper_(video_game)).
