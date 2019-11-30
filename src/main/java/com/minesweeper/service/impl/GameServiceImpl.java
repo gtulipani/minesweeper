@@ -19,6 +19,7 @@ import com.minesweeper.entity.Game;
 import com.minesweeper.entity.GameCell;
 import com.minesweeper.enums.CellOperation;
 import com.minesweeper.enums.GameCellOperationStatus;
+import com.minesweeper.enums.GameStatus;
 import com.minesweeper.exception.GameNotFoundException;
 import com.minesweeper.exception.MineExplodedException;
 import com.minesweeper.mapper.GameCellMapper;
@@ -53,6 +54,7 @@ public class GameServiceImpl implements GameService {
 	public GameBean createInternal(GameBean gameBean, Set<GameCellBean> gameCellBeans) {
 		// Create Game
 		Game game = gameMapper.mapToEntity(gameBean);
+		game.setGameStatus(GameStatus.PLAYING);
 		game = gameRepository.save(game);
 
 		// Create GameCells
@@ -69,7 +71,7 @@ public class GameServiceImpl implements GameService {
 	@Override
 	@Transactional
 	public GameCellOperationResponse performOperation(Long gameId, CellOperation cellOperation, Long row, Long column) {
-		GameBean gameBean = gameRepository.findById(gameId)
+		GameBean gameBean = gameRepository.findByIdAndGameStatusIs(gameId, GameStatus.PLAYING)
 				.map(gameMapper::mapToBean)
 				.orElseThrow(() -> new GameNotFoundException(gameId));
 		GameCellOperation gameCellOperation = GameCellOperation.builder()
@@ -85,11 +87,12 @@ public class GameServiceImpl implements GameService {
 					.gameCellBeans(gameCellService.performOperation(gameCellOperation))
 					.build();
 		} catch (MineExplodedException e) {
-			log.info("A mine has exploded in position with row={} and column={} in game={}",
+			log.info("A mine has exploded in position with row={} and column={} in gameId={}",
 					row,
 					column,
-					gameBean);
-			// update game status
+					gameId);
+			gameRepository.updateGameStatusById(GameStatus.FINISHED_LOST, gameId);
+			log.info("Updated game status to %s for status with id=%s", GameStatus.FINISHED_LOST, gameId);
 			return GameCellOperationResponse.builder()
 					.gameCellOperationStatus(GameCellOperationStatus.GAME_LOST)
 					.gameCellBeans(gameBean.getGameCells().stream()

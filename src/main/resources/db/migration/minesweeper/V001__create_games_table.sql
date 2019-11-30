@@ -5,5 +5,6 @@ CREATE TABLE `games` (
   `rows_quantity` bigint(11) unsigned NOT NULL,
   `columns_quantity` bigint(11) unsigned NOT NULL,
   `mines_quantity` bigint(11) unsigned NOT NULL,
+  `status` varchar(20) NOT NULL DEFAULT 'PLAYING',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

@@ -3,6 +3,9 @@ package com.minesweeper.service.impl;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
@@ -23,6 +26,7 @@ import com.minesweeper.component.GameCellHelper;
 import com.minesweeper.entity.Game;
 import com.minesweeper.entity.GameCell;
 import com.minesweeper.enums.CellOperation;
+import com.minesweeper.enums.GameStatus;
 import com.minesweeper.exception.GameNotFoundException;
 import com.minesweeper.exception.MineExplodedException;
 import com.minesweeper.mapper.GameCellMapper;
@@ -56,7 +60,7 @@ public class GameServiceImplTest {
 	@BeforeMethod
 	public void setup() {
 		MockitoAnnotations.initMocks(this);
-		gameService = new GameServiceImpl(gameMapper, gameCellMapper, gameRepository,gameCellRepository, gameCellService, gameCellHelper);
+		gameService = new GameServiceImpl(gameMapper, gameCellMapper, gameRepository, gameCellRepository, gameCellService, gameCellHelper);
 	}
 
 	@Test
@@ -106,11 +110,13 @@ public class GameServiceImplTest {
 				.column(column)
 				.build();
 		GameCellOperationResponse expectedResponse = GameCellOperationResponseMother.success().build();
-		when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+		when(gameRepository.findByIdAndGameStatusIs(gameId, GameStatus.PLAYING)).thenReturn(Optional.of(game));
 		when(gameMapper.mapToBean(game)).thenReturn(gameBean);
 		when(gameCellService.performOperation(gameCellOperation)).thenReturn(cellBeans);
 
 		assertThat(gameService.performOperation(gameId, cellOperation, row, column)).isEqualTo(expectedResponse);
+		verify(gameRepository, times(1)).findByIdAndGameStatusIs(gameId, GameStatus.PLAYING);
+		verifyNoMoreInteractions(gameRepository);
 	}
 
 	@Test
@@ -120,11 +126,13 @@ public class GameServiceImplTest {
 		CellOperation cellOperation = CellOperation.REVEALED;
 		Long row = 1L;
 		Long column = 1L;
-		when(gameRepository.findById(gameId)).thenReturn(Optional.empty());
+		when(gameRepository.findByIdAndGameStatusIs(gameId, GameStatus.PLAYING)).thenReturn(Optional.empty());
 
 		assertThatExceptionOfType(GameNotFoundException.class)
 				.isThrownBy(() -> gameService.performOperation(gameId, cellOperation, row, column))
 				.withMessage("Game with id=%s not found", gameId);
+		verify(gameRepository, times(1)).findByIdAndGameStatusIs(gameId, GameStatus.PLAYING);
+		verifyNoMoreInteractions(gameRepository);
 		verifyZeroInteractions(gameMapper);
 		verifyZeroInteractions(gameCellService);
 	}
@@ -144,12 +152,15 @@ public class GameServiceImplTest {
 		GameCellOperationResponse expectedResponse = GameCellOperationResponseMother.gameLost()
 				.gameCellBeans(Sets.newHashSet(mine))
 				.build();
-		when(gameRepository.findById(gameId)).thenReturn(Optional.of(game));
+		when(gameRepository.findByIdAndGameStatusIs(gameId, GameStatus.PLAYING)).thenReturn(Optional.of(game));
 		when(gameMapper.mapToBean(game)).thenReturn(gameBean);
 		when(gameCellService.performOperation(any(GameCellOperation.class))).thenThrow(new MineExplodedException(row, column, gameBean));
 		when(gameCellHelper.isMine(number)).thenReturn(false);
 		when(gameCellHelper.isMine(mine)).thenReturn(true);
 
 		assertThat(gameService.performOperation(gameId, cellOperation, row, column)).isEqualTo(expectedResponse);
+		verify(gameRepository, times(1)).findByIdAndGameStatusIs(gameId, GameStatus.PLAYING);
+		verify(gameRepository, times(1)).updateGameStatusById(GameStatus.FINISHED_LOST, gameId);
+		verifyNoMoreInteractions(gameRepository);
 	}
 }

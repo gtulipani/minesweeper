@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.minesweeper.enums.GameStatus;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,6 +21,7 @@ public class GameBean {
 	private Long rows;
 	private Long columns;
 	private Long mines;
+	private GameStatus gameStatus;
 	@JsonIgnore
 	private Set<GameCellBean> gameCells;
 }

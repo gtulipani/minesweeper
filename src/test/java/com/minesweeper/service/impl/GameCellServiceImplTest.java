@@ -155,7 +155,7 @@ public class GameCellServiceImplTest {
 	}
 
 	@Test
-	public void testPerformOperation_onNumber_doesntThrowException() {
+	public void testPerformOperationREVEALED_onNumber_doesntThrowException() {
 		GameCellBean number = GameCellBeanMother.number().build();
 		GameCellBean mine = GameCellBeanMother.mine().build();
 		GameBean gameBean = GameBeanMother.basic()
@@ -180,7 +180,7 @@ public class GameCellServiceImplTest {
 	}
 
 	@Test
-	public void testPerformOperation_onMine_throwMineExplodedException() {
+	public void testPerformOperationREVEALED_onMine_throwMineExplodedExceptionAndUpdatesCell() {
 		GameCellBean number = GameCellBeanMother.number().build();
 		GameCellBean mine = GameCellBeanMother.mine().build();
 		GameBean gameBean = GameBeanMother.basic()
@@ -203,6 +203,7 @@ public class GameCellServiceImplTest {
 				.withMessage("Mine exploded in row=%s, column=%s on game with id=%s", row, column, gameBean.getId());
 		verify(gameCellHelper, atLeastOnce()).isMine(any(GameCellBean.class));
 		verify(gameCellHelper, atLeastOnce()).hasPosition(any(GameCellBean.class), anyLong(), anyLong());
+		verify(gameCellRepository, times(1)).updateCellOperationById(CellOperation.REVEALED, mine.getId());
 		verifyNoMoreInteractions(gameCellHelper);
 	}
 

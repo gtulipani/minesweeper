@@ -164,15 +164,19 @@ public class GameCellServiceImpl implements GameCellService {
 			Long row = gameCellOperation.getRow();
 			Long column = gameCellOperation.getColumn();
 			GameBean gameBean = gameCellOperation.getGameBean();
-			if (gameBean.getGameCells().stream()
+
+			gameBean.getGameCells().stream()
 					.filter(gameCellHelper::isMine)
-					.anyMatch(gameCellBean -> gameCellHelper.hasPosition(gameCellBean, row, column))) {
-				throw new MineExplodedException(row, column, gameBean);
-			} else {
-				// calculate how many mines are around and update the values
-				// if minesAround is zero then must call the neighboorhoods and reapply same logic
-				return Collections.emptySet();
-			}
+					.filter(gameCellBean -> gameCellHelper.hasPosition(gameCellBean, row, column))
+					.findFirst()
+					.ifPresent(cell -> {
+						gameCellRepository.updateCellOperationById(CellOperation.REVEALED, cell.getId());
+						throw new MineExplodedException(row, column, gameBean);
+					});
+			
+			// calculate how many mines are around and update the values
+			// if minesAround is zero then must call the neighboorhoods and reapply same logic
+			return Collections.emptySet();
 		};
 	}
 
