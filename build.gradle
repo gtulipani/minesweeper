@@ -17,6 +17,8 @@ buildscript {
 		javaXRsVersion = '1.0'
 		hibernateJava8Version = '5.4.9.Final'
 		comSunXmlBindVersion = '2.3.2'
+		apacheCommonsLang3Version = '3.9'
+		googleCollectionsVersion = '1.0-rc2'
 	}
 	repositories {
 		jcenter()
@@ -117,6 +119,9 @@ dependencies {
 	compile group: 'javax.ws.rs', name: 'javax.ws.rs', version: "${javaXRsVersion}"
 	compile group: 'org.hibernate', name: 'hibernate-java8', version: "${hibernateJava8Version}"
 	compile group: 'com.sun.xml.bind', name: 'jaxb-impl', version: "${comSunXmlBindVersion}"
+	compile group: 'org.apache.commons', name: 'commons-lang3', version: "${apacheCommonsLang3Version}"
+	compile group: 'com.google.collections', name: 'google-collections', version: "${googleCollectionsVersion}"
+
 
 	testCompileOnly group: 'org.projectlombok', name: 'lombok', version: "${lombokVersion}"
 

@@ -1,4 +1,4 @@
-package com.minesweeper.mapper;
+package com.minesweeper.mapper.impl;
 
 import javax.annotation.PostConstruct;
 
@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import com.minesweeper.bean.GameBean;
 import com.minesweeper.entity.Game;
+import com.minesweeper.mapper.GameMapper;
 import ma.glasnost.orika.MapperFacade;
 import ma.glasnost.orika.MapperFactory;
 import ma.glasnost.orika.impl.DefaultMapperFactory;
@@ -15,8 +16,6 @@ import ma.glasnost.orika.impl.DefaultMapperFactory;
 @RequiredArgsConstructor
 @Component
 public class GameMapperImpl implements GameMapper {
-	private final GameConfigurationMapper gameConfigurationMapper;
-
 	private MapperFacade facade;
 
 	@PostConstruct
@@ -30,15 +29,12 @@ public class GameMapperImpl implements GameMapper {
 
 	@Override
 	public GameBean mapToBean(Game game) {
-		GameBean gameBean = facade.map(game, GameBean.class);
-		gameBean.setGameConfiguration(gameConfigurationMapper.mapToBean(game.getGameConfiguration()));
-		return gameBean;
+		return facade.map(game, GameBean.class);
 	}
 
 	@Override
 	public Game mapToEntity(GameBean gameBean) {
 		Game game = facade.map(gameBean, Game.class);
-		game.setGameConfiguration(gameConfigurationMapper.mapToEntity(gameBean.getGameConfiguration()));
 		return game;
 	}
 }
