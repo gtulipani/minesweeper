@@ -5,9 +5,11 @@ import static com.minesweeper.enums.CellOperation.QUESTION_MARKED;
 import static com.minesweeper.enums.CellOperation.REVEALED;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiPredicate;
@@ -167,9 +169,7 @@ public class GameCellServiceImpl implements GameCellService {
 			Long column = gameCellOperation.getColumn();
 			GameBean gameBean = gameCellOperation.getGameBean();
 
-			GameCellBean cell = gameBean.getGameCells().stream()
-					.filter(gameCellBean -> gameCellHelper.hasPosition(gameCellBean, row, column))
-					.findFirst()
+			GameCellBean cell = getCellFromPosition(gameBean, row, column)
 					.orElseThrow(() -> new InvalidPositionException(row, column));
 
 			if (gameCellHelper.isMine(cell)) {
@@ -177,11 +177,13 @@ public class GameCellServiceImpl implements GameCellService {
 				throw new MineExplodedException(row, column, gameBean);
 			}
 
+			if (CellOperation.REVEALED.equals(cell.getCellOperation())) {
+				// Cell is already revealed, nothing to do
+				return Sets.newHashSet();
+			}
+
 			Set<GameCellBean> updatedCells = populateMinesAround(cell, gameBean);
-			updatedCells.forEach(updatedCell -> {
-				updateCellOperationAndMinesAroundById(CellOperation.REVEALED, updatedCell.getMinesAround(), updatedCell.getId());
-				updatedCell.setCellOperation(CellOperation.REVEALED);
-			});
+			updatedCells.forEach(updatedCell -> updateCellOperationAndMinesAroundById(CellOperation.REVEALED, updatedCell.getMinesAround(), updatedCell.getId()));
 			return updatedCells;
 		};
 	}
@@ -209,10 +211,13 @@ public class GameCellServiceImpl implements GameCellService {
 		GameBean gameBean = gameCellOperation.getGameBean();
 
 		// We update the status from it in the DB
-		GameCellBean existingCell = gameBean.getGameCells().stream()
-				.filter(cell -> gameCellHelper.hasPosition(cell, row, column))
-				.findFirst()
+		GameCellBean existingCell = getCellFromPosition(gameBean, row, column)
 				.orElseThrow(() -> new RuntimeException("Cell is not found in the DB. Unexpected error."));
+
+		if (CellOperation.REVEALED.equals(existingCell.getCellOperation())) {
+			// Cell is already revealed, it can't be updated
+			return Sets.newHashSet();
+		}
 
 		updateCellOperationById(cellOperation, existingCell.getId());
 		existingCell.setCellOperation(cellOperation);
@@ -247,10 +252,46 @@ public class GameCellServiceImpl implements GameCellService {
 				.filter(Boolean::booleanValue)
 				.count();
 
+		gameCellBean.setCellOperation(CellOperation.REVEALED);
 		gameCellBean.setMinesAround(minesAround);
 
-		// if minesAround is zero then must call the neighboorhoods and re-apply same logic
-		return Sets.newHashSet(gameCellBean);
+		Set<GameCellBean> result = Sets.newHashSet(gameCellBean);
+		if (gameCellBean.getMinesAround().intValue() == 0) {
+			Set<GameCellBean> newcells = buildCellsAround(gameCellBean, gameBean)
+					// We filter items that weren't operated, to avoid infinite recursion
+					.filter(c -> CellOperation.NONE.equals(c.getCellOperation()))
+					.map(c -> populateMinesAround(c, gameBean))
+					.flatMap(Collection::stream)
+					.collect(Collectors.toSet());
+			result.addAll(newcells);
+		}
+
+		return result;
+	}
+
+	/**
+	 * Private method that creates a {@link Stream} of {@link GameCellBean} with all the cells around the one passed as 
+	 * parameter
+	 */
+	@VisibleForTesting
+	Stream<GameCellBean> buildCellsAround(GameCellBean gameCellBean, GameBean gameBean) {
+		return buildPossibleDirections(gameCellBean.getRow(), gameCellBean.getColumn())
+				.stream()
+				.map(direction -> getCellFromPosition(gameBean, direction.getLeft(), direction.getRight()))
+				.flatMap(Optional::stream);
+	}
+
+	/**
+	 * Private method that iterates over all the cells and finds the one with a given position.
+	 */
+	@VisibleForTesting
+	Optional<GameCellBean> getCellFromPosition(GameBean gameBean, Long row, Long column) {
+		if (isOutOfBounds(gameBean, row, column)) {
+			return Optional.empty();
+		}
+		return gameBean.getGameCells().parallelStream()
+				.filter(cell -> gameCellHelper.hasPosition(cell, row, column))
+				.findFirst();
 	}
 
 	/**

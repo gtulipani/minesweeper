@@ -25,6 +25,6 @@ public class GameCellBeanMother {
 				.column(NUMBER_COLUMN)
 				.cellContent(CellContent.NUMBER)
 				.minesAround(MINES_AROUND)
-				.cellOperation(CellOperation.REVEALED);
+				.cellOperation(CellOperation.NONE);
 	}
 }
