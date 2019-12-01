@@ -4,7 +4,7 @@ import static com.minesweeper.enums.CellOperation.FLAGGED;
 import static com.minesweeper.enums.CellOperation.QUESTION_MARKED;
 import static com.minesweeper.enums.CellOperation.REVEALED;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +15,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,7 @@ import com.minesweeper.component.GameCellHelper;
 import com.minesweeper.enums.CellContent;
 import com.minesweeper.enums.CellOperation;
 import com.minesweeper.exception.CellOperationNotSupportedException;
+import com.minesweeper.exception.InvalidPositionException;
 import com.minesweeper.exception.MineExplodedException;
 import com.minesweeper.repository.GameCellRepository;
 import com.minesweeper.service.GameCellService;
@@ -165,18 +167,22 @@ public class GameCellServiceImpl implements GameCellService {
 			Long column = gameCellOperation.getColumn();
 			GameBean gameBean = gameCellOperation.getGameBean();
 
-			gameBean.getGameCells().stream()
-					.filter(gameCellHelper::isMine)
+			GameCellBean cell = gameBean.getGameCells().stream()
 					.filter(gameCellBean -> gameCellHelper.hasPosition(gameCellBean, row, column))
 					.findFirst()
-					.ifPresent(cell -> {
-						gameCellRepository.updateCellOperationById(CellOperation.REVEALED, cell.getId());
-						throw new MineExplodedException(row, column, gameBean);
-					});
-			
-			// calculate how many mines are around and update the values
-			// if minesAround is zero then must call the neighboorhoods and reapply same logic
-			return Collections.emptySet();
+					.orElseThrow(() -> new InvalidPositionException(row, column));
+
+			if (gameCellHelper.isMine(cell)) {
+				updateCellOperationById(CellOperation.REVEALED, cell.getId());
+				throw new MineExplodedException(row, column, gameBean);
+			}
+
+			Set<GameCellBean> updatedCells = populateMinesAround(cell, gameBean);
+			updatedCells.forEach(updatedCell -> {
+				updateCellOperationAndMinesAroundById(CellOperation.REVEALED, updatedCell.getMinesAround(), updatedCell.getId());
+				updatedCell.setCellOperation(CellOperation.REVEALED);
+			});
+			return updatedCells;
 		};
 	}
 
@@ -197,7 +203,6 @@ public class GameCellServiceImpl implements GameCellService {
 	}
 
 	@VisibleForTesting
-	@Transactional
 	Set<GameCellBean> updateCellWithCellOperation(GameCellOperation gameCellOperation, CellOperation cellOperation) {
 		Long row = gameCellOperation.getRow();
 		Long column = gameCellOperation.getColumn();
@@ -209,9 +214,83 @@ public class GameCellServiceImpl implements GameCellService {
 				.findFirst()
 				.orElseThrow(() -> new RuntimeException("Cell is not found in the DB. Unexpected error."));
 
-		gameCellRepository.updateCellOperationById(cellOperation, existingCell.getId());
+		updateCellOperationById(cellOperation, existingCell.getId());
 		existingCell.setCellOperation(cellOperation);
 
 		return Sets.newHashSet(existingCell);
+	}
+
+	@VisibleForTesting
+	@Transactional
+	void updateCellOperationById(CellOperation cellOperation, Long id) {
+		gameCellRepository.updateCellOperationById(cellOperation, id);
+	}
+
+	@VisibleForTesting
+	@Transactional
+	void updateCellOperationAndMinesAroundById(CellOperation cellOperation, Long minesAround, Long id) {
+		gameCellRepository.updateCellOperationAndMinesAroundById(cellOperation, minesAround, id);
+	}
+
+	/**
+	 * Private method that calculates how many mines are around him.
+	 */
+	@VisibleForTesting
+	Set<GameCellBean> populateMinesAround(GameCellBean gameCellBean, GameBean gameBean) {
+		long row = gameCellBean.getRow();
+		long column = gameCellBean.getColumn();
+
+		// Check every possible direction (8 in total) and counting how many mines there are
+		Stream<Boolean> results = buildPossibleDirections(row, column).stream()
+				.map(pair -> hasMineInPosition(gameBean, pair));
+		long minesAround = results
+				.filter(Boolean::booleanValue)
+				.count();
+
+		gameCellBean.setMinesAround(minesAround);
+
+		// if minesAround is zero then must call the neighboorhoods and re-apply same logic
+		return Sets.newHashSet(gameCellBean);
+	}
+
+	/**
+	 * Creates a {@link List} of {@link Pair} with all the adyacents directions from the cell
+	 */
+	@VisibleForTesting
+	List<Pair<Long, Long>> buildPossibleDirections(Long row, Long column) {
+		return Arrays.asList(Pair.of(row - 1, column - 1),
+				Pair.of(row - 1, column),
+				Pair.of(row - 1, column + 1),
+				Pair.of(row, column - 1),
+				Pair.of(row, column + 1),
+				Pair.of(row + 1, column - 1),
+				Pair.of(row + 1, column),
+				Pair.of(row + 1, column + 1));
+	}
+
+	/**
+	 * Iterates over all the existing {@link GameCellBean} and checks if the one with position defined by the {@link Pair}
+	 * passed as parameter has its content as {@link CellContent#MINE}
+	 */
+	@VisibleForTesting
+	boolean hasMineInPosition(GameBean gameBean, Pair<Long, Long> rowColumnPair) {
+		if (isOutOfBounds(gameBean, rowColumnPair.getLeft(), rowColumnPair.getRight())) {
+			return false;
+		}
+
+		return gameBean.getGameCells().stream().anyMatch(gameCellBean -> 
+				gameCellHelper.isMine(gameCellBean) && 
+				gameCellHelper.hasPosition(gameCellBean, rowColumnPair.getLeft(), rowColumnPair.getRight()));
+	}
+
+	/**
+	 * Private method that checks if the row and column passed as parameter are Out of Bounds of the Game.
+	 */
+	@VisibleForTesting
+	boolean isOutOfBounds(GameBean gameBean, long row, long column) {
+		return ((row < 1) ||
+				(row > gameBean.getRows()) ||
+				(column < 1) ||
+				(column > gameBean.getColumns()));
 	}
 }

@@ -50,7 +50,8 @@ public class GameServiceImpl implements GameService {
 
 	/**
 	 * Method is public in order to have Transactional scope. Logic in different method because
-	 * {@link GameCellService#populateCells(GameBean)} could take a lot of time.
+	 * {@link GameCellService#populateCells(GameBean)} could be really memory-intensive and we don't want to leave the
+	 * transactional scope open during that time.
 	 */
 	@Transactional
 	public GameBean createInternal(GameBean gameBean, Set<GameCellBean> gameCellBeans) {

@@ -1,9 +1,12 @@
 package com.minesweeper.service.impl;
 
 import static com.minesweeper.utils.TestConstants.COLUMNS_QUANTITY;
+import static com.minesweeper.utils.TestConstants.ID;
 import static com.minesweeper.utils.TestConstants.MINES_QUANTITY;
 import static com.minesweeper.utils.TestConstants.MINE_COLUMNS;
 import static com.minesweeper.utils.TestConstants.MINE_ROW;
+import static com.minesweeper.utils.TestConstants.NUMBER_COLUMN;
+import static com.minesweeper.utils.TestConstants.NUMBER_ROW;
 import static com.minesweeper.utils.TestConstants.ROWS_QUANTITY;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
@@ -17,6 +20,8 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
@@ -37,6 +42,7 @@ import com.minesweeper.bean.GameCellOperation;
 import com.minesweeper.component.GameCellHelper;
 import com.minesweeper.enums.CellContent;
 import com.minesweeper.enums.CellOperation;
+import com.minesweeper.exception.InvalidPositionException;
 import com.minesweeper.exception.MineExplodedException;
 import com.minesweeper.mother.GameBeanMother;
 import com.minesweeper.mother.GameCellBeanMother;
@@ -175,8 +181,6 @@ public class GameCellServiceImplTest {
 
 		assertThatCode(() -> gameCellService.performOperation(gameCellOperation))
 				.doesNotThrowAnyException();
-		verify(gameCellHelper, times(1)).isMine(number);
-		verify(gameCellHelper, times(1)).isMine(mine);
 	}
 
 	@Test
@@ -205,6 +209,81 @@ public class GameCellServiceImplTest {
 		verify(gameCellHelper, atLeastOnce()).hasPosition(any(GameCellBean.class), anyLong(), anyLong());
 		verify(gameCellRepository, times(1)).updateCellOperationById(CellOperation.REVEALED, mine.getId());
 		verifyNoMoreInteractions(gameCellHelper);
+	}
+
+	@Test
+	public void testRevealedOperationFunction() {
+		CellOperation toUpdate = CellOperation.REVEALED;
+		GameCellBean gameCellBean = GameCellBeanMother.number()
+				.cellOperation(CellOperation.NONE)
+				.build();
+		GameBean gameBean = GameBeanMother.basic()
+				.gameCells(Sets.newHashSet(gameCellBean))
+				.build();
+		GameCellOperation gameCellOperation = GameCellOperationMother.revealed()
+				.gameBean(gameBean)
+				.build();
+		GameCellBean expected = GameCellBeanMother.number()
+				.cellOperation(toUpdate)
+				.minesAround(0L)
+				.build();
+		when(gameCellHelper.hasPosition(gameCellBean, gameCellOperation.getRow(), gameCellOperation.getColumn())).thenReturn(true);
+		when(gameCellHelper.isMine(gameCellBean)).thenReturn(false);
+
+		Function<GameCellOperation, Set<GameCellBean>> function = gameCellService.revealedOperationFunction();
+		assertThat(function.apply(gameCellOperation)).contains(expected);
+		verify(gameCellRepository, times(1)).updateCellOperationAndMinesAroundById(toUpdate, 0L, gameCellBean.getId());
+	}
+
+	@Test
+	public void testRevealedOperationFunction_whenNoCellIsFound_throwsInvalidPositionException() {
+		GameCellBean gameCellBean = GameCellBeanMother.number()
+				.cellOperation(CellOperation.NONE)
+				.build();
+		GameBean gameBean = GameBeanMother.basic()
+				.gameCells(Sets.newHashSet(gameCellBean))
+				.build();
+		GameCellOperation gameCellOperation = GameCellOperationMother.revealed()
+				.gameBean(gameBean)
+				.build();
+		when(gameCellHelper.hasPosition(gameCellBean, gameCellOperation.getRow(), gameCellOperation.getColumn())).thenReturn(false);
+
+		Function<GameCellOperation, Set<GameCellBean>> function = gameCellService.revealedOperationFunction();
+		assertThatExceptionOfType(InvalidPositionException.class)
+				.isThrownBy(() -> function.apply(gameCellOperation))
+				.withMessage("Invalid position with row=%s and column=%s", gameCellOperation.getRow(), gameCellOperation.getColumn());
+		verify(gameCellHelper, times(1)).hasPosition(gameCellBean, gameCellOperation.getRow(), gameCellOperation.getColumn());
+		verifyNoMoreInteractions(gameCellHelper);
+		verifyZeroInteractions(gameCellRepository);
+	}
+
+	@Test
+	public void testRevealedOperationFunction_whenMineIsRevealed_throwsMineExplodedException() {
+		CellOperation toUpdate = CellOperation.REVEALED;
+		GameCellBean gameCellBean = GameCellBeanMother.number()
+				.cellOperation(CellOperation.NONE)
+				.build();
+		GameBean gameBean = GameBeanMother.basic()
+				.gameCells(Sets.newHashSet(gameCellBean))
+				.build();
+		GameCellOperation gameCellOperation = GameCellOperationMother.revealed()
+				.gameBean(gameBean)
+				.build();
+		when(gameCellHelper.hasPosition(gameCellBean, gameCellOperation.getRow(), gameCellOperation.getColumn())).thenReturn(true);
+		when(gameCellHelper.isMine(gameCellBean)).thenReturn(true);
+
+		Function<GameCellOperation, Set<GameCellBean>> function = gameCellService.revealedOperationFunction();
+		assertThatExceptionOfType(MineExplodedException.class)
+				.isThrownBy(() -> function.apply(gameCellOperation))
+				.withMessage("Mine exploded in row=%s, column=%s on game with id=%s",
+						gameCellOperation.getRow(),
+						gameCellOperation.getColumn(),
+						gameBean.getId());
+		verify(gameCellHelper, times(1)).hasPosition(gameCellBean, gameCellOperation.getRow(), gameCellOperation.getColumn());
+		verify(gameCellHelper, times(1)).isMine(gameCellBean);
+		verify(gameCellRepository, times(1)).updateCellOperationById(toUpdate, gameCellBean.getId());
+		verifyNoMoreInteractions(gameCellHelper);
+		verifyNoMoreInteractions(gameCellRepository);
 	}
 
 	@Test
@@ -301,5 +380,203 @@ public class GameCellServiceImplTest {
 				.withMessage("Cell is not found in the DB. Unexpected error.");
 		verify(gameCellHelper, times(1)).hasPosition(gameCellBean, gameCellOperation.getRow(), gameCellOperation.getColumn());
 		verifyZeroInteractions(gameCellRepository);
+	}
+
+	@Test
+	public void testUpdateCellOperationById() {
+		CellOperation cellOperation = CellOperation.REVEALED;
+		Long id = ID;
+
+		gameCellService.updateCellOperationById(cellOperation, id);
+
+		verify(gameCellRepository, times(1)).updateCellOperationById(cellOperation, id);
+		verifyNoMoreInteractions(gameCellRepository);
+	}
+
+	@Test
+	public void testUpdateCellOperationAndMinesAroundById() {
+		CellOperation cellOperation = CellOperation.REVEALED;
+		Long minesAround = 5L;
+		Long id = ID;
+
+		gameCellService.updateCellOperationAndMinesAroundById(cellOperation, minesAround, id);
+
+		verify(gameCellRepository, times(1)).updateCellOperationAndMinesAroundById(cellOperation, minesAround, id);
+		verifyNoMoreInteractions(gameCellRepository);
+	}
+
+	@Test
+	public void testPopulateMinesAround_minesInCorners() {
+		GameCellBean firstIsMine = GameCellBeanMother.mine().row(1L).column(1L).build();
+		GameCellBean secondIsNumber = GameCellBeanMother.number().row(1L).column(2L).build();
+		GameCellBean thirdIsMine = GameCellBeanMother.mine().row(1L).column(3L).build();
+		GameCellBean fourthIsNumber = GameCellBeanMother.number().row(2L).column(1L).build();
+		GameCellBean cellToCheck = GameCellBeanMother.number().row(2L).column(2L).build();
+		GameCellBean sixthIsNumber = GameCellBeanMother.number().row(2L).column(3L).build();
+		GameCellBean seventhIsMine = GameCellBeanMother.mine().row(3L).column(1L).build();
+		GameCellBean eighthIsNumber = GameCellBeanMother.number().row(3L).column(2L).build();
+		GameCellBean ninthIsMine = GameCellBeanMother.mine().row(3L).column(3L).build();
+		Set<GameCellBean> cells = Sets.newHashSet(firstIsMine, secondIsNumber, thirdIsMine, fourthIsNumber, cellToCheck,
+				sixthIsNumber, seventhIsMine, eighthIsNumber, ninthIsMine);
+		GameBean gameBean = GameBeanMother.basic()
+				.gameCells(cells)
+				.build();
+
+		// Mock responses for each cell except for the one to be tested
+		cells
+				.stream()
+				.filter(cell -> !cell.equals(cellToCheck))
+				.forEach(cell -> {
+						when(gameCellHelper.isMine(cell)).thenReturn(CellContent.MINE.equals(cell.getCellContent()));
+						when(gameCellHelper.hasPosition(cell, cell.getRow(), cell.getColumn())).thenReturn(true);
+				});
+		GameCellBean cellAfterMethod = GameCellBeanMother.number()
+				.row(2L)
+				.column(2L)
+				.minesAround(4L)
+				.build();
+
+		Set<GameCellBean> result = gameCellService.populateMinesAround(cellToCheck, gameBean);
+
+		assertThat(result.size()).isEqualTo(1);
+		assertThat(result).contains(cellAfterMethod);
+	}
+
+	@Test
+	public void testPopulateMinesAround_minesInCross() {
+		GameCellBean firstIsNumber = GameCellBeanMother.number().row(1L).column(1L).build();
+		GameCellBean secondIsMine = GameCellBeanMother.mine().row(1L).column(2L).build();
+		GameCellBean thirdIsNumber = GameCellBeanMother.number().row(1L).column(3L).build();
+		GameCellBean fourthIsMine = GameCellBeanMother.mine().row(2L).column(1L).build();
+		GameCellBean cellToCheck = GameCellBeanMother.number().row(2L).column(2L).build();
+		GameCellBean sixthIsMine = GameCellBeanMother.mine().row(2L).column(3L).build();
+		GameCellBean seventhIsNumber = GameCellBeanMother.number().row(3L).column(1L).build();
+		GameCellBean eighthIsMine = GameCellBeanMother.mine().row(3L).column(2L).build();
+		GameCellBean ninthIsNumber = GameCellBeanMother.number().row(3L).column(3L).build();
+		Set<GameCellBean> cells = Sets.newHashSet(firstIsNumber, secondIsMine, thirdIsNumber, fourthIsMine, cellToCheck,
+				sixthIsMine, seventhIsNumber, eighthIsMine, ninthIsNumber);
+		GameBean gameBean = GameBeanMother.basic()
+				.gameCells(cells)
+				.build();
+
+		// Mock responses for each cell except for the one to be tested
+		cells
+				.stream()
+				.filter(cell -> !cell.equals(cellToCheck))
+				.forEach(cell -> {
+					when(gameCellHelper.isMine(cell)).thenReturn(CellContent.MINE.equals(cell.getCellContent()));
+					when(gameCellHelper.hasPosition(cell, cell.getRow(), cell.getColumn())).thenReturn(true);
+				});
+		GameCellBean cellAfterMethod = GameCellBeanMother.number()
+				.row(2L)
+				.column(2L)
+				.minesAround(4L)
+				.build();
+
+		Set<GameCellBean> result = gameCellService.populateMinesAround(cellToCheck, gameBean);
+
+		assertThat(result.size()).isEqualTo(1);
+		assertThat(result).contains(cellAfterMethod);
+	}
+
+	@Test
+	public void testBuildPossibleDirections() {
+		Long row = NUMBER_ROW;
+		Long column = NUMBER_COLUMN;
+
+		List<Pair<Long, Long>> directions = gameCellService.buildPossibleDirections(row, column);
+
+		assertThat(directions).hasSize(8);
+		assertThat(directions).containsExactly(
+				Pair.of(row - 1, column - 1),
+				Pair.of(row - 1, column),
+				Pair.of(row - 1, column + 1),
+				Pair.of(row, column - 1),
+				Pair.of(row, column + 1),
+				Pair.of(row + 1, column - 1),
+				Pair.of(row + 1, column),
+				Pair.of(row + 1, column + 1));
+	}
+
+	@Test
+	public void testHasMineInPosition_whenItsMine_returnTrue() {
+		GameCellBean cell = GameCellBeanMother.number().build();
+		GameBean gameBean = GameBeanMother.basic()
+				.gameCells(Sets.newHashSet(cell))
+				.build();
+		Long row = 1L;
+		Long column = 1L;
+		Pair<Long, Long> pair = Pair.of(row, column);
+		when(gameCellHelper.isMine(cell)).thenReturn(true);
+		when(gameCellHelper.hasPosition(cell, row, column)).thenReturn(true);
+
+		assertThat(gameCellService.hasMineInPosition(gameBean, pair)).isTrue();
+
+		verify(gameCellHelper, times(1)).isMine(cell);
+		verify(gameCellHelper, times(1)).hasPosition(cell, row, column);
+		verifyNoMoreInteractions(gameCellHelper);
+	}
+
+	@Test
+	public void testHasMineInPosition_whenItsNotMine_returnFalse() {
+		GameCellBean cell = GameCellBeanMother.number().build();
+		GameBean gameBean = GameBeanMother.basic()
+				.gameCells(Sets.newHashSet(cell))
+				.build();
+		Long row = 1L;
+		Long column = 1L;
+		Pair<Long, Long> pair = Pair.of(row, column);
+		when(gameCellHelper.isMine(cell)).thenReturn(false);
+		when(gameCellHelper.hasPosition(cell, row, column)).thenReturn(true);
+
+		assertThat(gameCellService.hasMineInPosition(gameBean, pair)).isFalse();
+
+		verify(gameCellHelper, times(1)).isMine(cell);
+		verifyNoMoreInteractions(gameCellHelper);
+	}
+
+	@Test
+	public void testHasMineInPosition_whenItsOutsideOfBounds_returnFalse() {
+		GameBean gameBean = GameBeanMother.basic()
+				.build();
+		Long row = 0L;
+		Long column = 0L;
+		Pair<Long, Long> pair = Pair.of(row, column);
+
+		assertThat(gameCellService.hasMineInPosition(gameBean, pair)).isFalse();
+
+		verifyZeroInteractions(gameCellHelper);
+	}
+
+	@Test
+	public void testIsOutOfBounds_isTrue() {
+		GameBean gameBean = GameBeanMother.basic().build();
+		List<Pair<Long, Long>> limits = Arrays.asList(
+				Pair.of(1L, 0L),
+				Pair.of(0L, 0L),
+				Pair.of(0L, 1L),
+				Pair.of(0L, gameBean.getColumns()),
+				Pair.of(0L, gameBean.getColumns() + 1),
+				Pair.of(1L, gameBean.getColumns() + 1),
+				Pair.of(gameBean.getRows(), gameBean.getColumns() + 1),
+				Pair.of(gameBean.getRows() + 1, gameBean.getColumns() + 1),
+				Pair.of(gameBean.getRows() + 1, gameBean.getColumns()),
+				Pair.of(gameBean.getRows() + 1, 1L),
+				Pair.of(gameBean.getRows() + 1, 0L),
+				Pair.of(gameBean.getRows(), 0L));
+
+		limits.forEach(pair -> assertThat(gameCellService.isOutOfBounds(gameBean, pair.getLeft(), pair.getRight())).isTrue());
+	}
+
+	@Test
+	public void testIsOutOfBounds_isFalse() {
+		GameBean gameBean = GameBeanMother.basic().build();
+		List<Pair<Long, Long>> limits = Arrays.asList(
+				Pair.of(1L, 1L),
+				Pair.of(1L, gameBean.getColumns()),
+				Pair.of(gameBean.getRows(), gameBean.getColumns()),
+				Pair.of(gameBean.getRows(), 1L));
+
+		limits.forEach(pair -> assertThat(gameCellService.isOutOfBounds(gameBean, pair.getLeft(), pair.getRight())).isFalse());
 	}
 }

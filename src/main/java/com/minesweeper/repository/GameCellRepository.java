@@ -14,4 +14,10 @@ public interface GameCellRepository extends JpaRepository<GameCell, Long>  {
 	@Modifying
 	@Query("UPDATE GameCell g SET g.cellOperation= :cellOperation WHERE g.id = :id")
 	void updateCellOperationById(@Param("cellOperation") CellOperation cellOperation, @Param("id") Long id);
+
+	@Modifying
+	@Query("UPDATE GameCell g SET g.cellOperation = :cellOperation, g.minesAround = :minesAround WHERE g.id = :id")
+	void updateCellOperationAndMinesAroundById(@Param("cellOperation") CellOperation cellOperation,
+											   @Param("minesAround") Long minesAround,
+											   @Param("id") Long id);
 }
