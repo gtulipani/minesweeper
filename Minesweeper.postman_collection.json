@@ -1,0 +1,204 @@
+{
+	"info": {
+		"_postman_id": "6d158e65-5516-4c36-a619-928f34178d8a",
+		"name": "Minesweeper",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "POST /api/v1/games",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"name": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"rows\": 2,\n    \"columns\": 2,\n    \"mines\": 1\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8090/api/v1/games",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8090",
+					"path": [
+						"api",
+						"v1",
+						"games"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "POST /api/v1/games/{gameId}/pause",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8090/api/v1/games/1/pause",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8090",
+					"path": [
+						"api",
+						"v1",
+						"games",
+						"1",
+						"pause"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "POST /api/v1/games/{gameId}/resume",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8090/api/v1/games/1/resume",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8090",
+					"path": [
+						"api",
+						"v1",
+						"games",
+						"1",
+						"resume"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "POST /api/v1/games/{gameId}/operation - REVEALED",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8090/api/v1/games/1/operation?cellOperation=REVEALED&row=1&column=1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8090",
+					"path": [
+						"api",
+						"v1",
+						"games",
+						"1",
+						"operation"
+					],
+					"query": [
+						{
+							"key": "cellOperation",
+							"value": "REVEALED"
+						},
+						{
+							"key": "row",
+							"value": "1"
+						},
+						{
+							"key": "column",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "POST /api/v1/games/{gameId}/operation - FLAGGED",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8090/api/v1/games/1/operation?cellOperation=FLAGGED&row=1&column=1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8090",
+					"path": [
+						"api",
+						"v1",
+						"games",
+						"1",
+						"operation"
+					],
+					"query": [
+						{
+							"key": "cellOperation",
+							"value": "FLAGGED"
+						},
+						{
+							"key": "row",
+							"value": "1"
+						},
+						{
+							"key": "column",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "POST /api/v1/games/{gameId}/operation - QUESTION_MARKED",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8090/api/v1/games/1/operation?cellOperation=QUESTION_MARKED&row=1&column=1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8090",
+					"path": [
+						"api",
+						"v1",
+						"games",
+						"1",
+						"operation"
+					],
+					"query": [
+						{
+							"key": "cellOperation",
+							"value": "QUESTION_MARKED"
+						},
+						{
+							"key": "row",
+							"value": "1"
+						},
+						{
+							"key": "column",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"protocolProfileBehavior": {}
+}
