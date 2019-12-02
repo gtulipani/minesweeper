@@ -27,11 +27,11 @@ management:
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/minesweeper?createDatabaseIfNotExist=true&verifyServerCertificate=false&useSSL=false
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/minesweeper?createDatabaseIfNotExist=true&verifyServerCertificate=false&useSSL=false}
     hikari:
-      jdbc-url: jdbc:mysql://localhost:3306/minesweeper?createDatabaseIfNotExist=true&verifyServerCertificate=false&useSSL=false
-      username: root
-      password: password
+      jdbc-url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/minesweeper?createDatabaseIfNotExist=true&verifyServerCertificate=false&useSSL=false}
+      username: ${SPRING_DATASOURCE_USERNAME:root}
+      password: ${SPRING_DATASOURCE_PASSWORD:password}
     max-active: 20
     max-idle: 20
     test-while-idle : true
