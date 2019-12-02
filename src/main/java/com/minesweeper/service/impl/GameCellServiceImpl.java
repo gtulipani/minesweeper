@@ -19,10 +19,10 @@ import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
+import lombok.AllArgsConstructor;
+
 import org.apache.commons.lang3.tuple.Pair;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
@@ -32,29 +32,23 @@ import com.minesweeper.bean.GameBean;
 import com.minesweeper.bean.GameCellBean;
 import com.minesweeper.bean.GameCellOperation;
 import com.minesweeper.component.GameCellHelper;
+import com.minesweeper.dao.GameCellDAO;
 import com.minesweeper.enums.CellContent;
 import com.minesweeper.enums.CellOperation;
 import com.minesweeper.exception.CellOperationNotSupportedException;
 import com.minesweeper.exception.InvalidPositionException;
 import com.minesweeper.exception.MineExplodedException;
-import com.minesweeper.repository.GameCellRepository;
 import com.minesweeper.service.GameCellService;
 
+@AllArgsConstructor
 @Service
 public class GameCellServiceImpl implements GameCellService {
-	private final GameCellRepository gameCellRepository;
+	private final GameCellDAO gameCellDAO;
 	private final GameCellHelper gameCellHelper;
 	private final Map<CellOperation, Function<GameCellOperation, Set<GameCellBean>>> cellOperationFunction = ImmutableMap.of(
 			REVEALED, revealedOperationFunction(),
 			FLAGGED, flaggedOperationFunction(),
 			QUESTION_MARKED, questionMarkedFunction());
-
-	@Autowired
-	public GameCellServiceImpl(GameCellRepository gameCellRepository,
-							   GameCellHelper gameCellHelper) {
-		this.gameCellRepository = gameCellRepository;
-		this.gameCellHelper = gameCellHelper;
-	}
 
 	@Override
 	public Set<GameCellBean> populateCells(GameBean gameBean) {
@@ -164,28 +158,18 @@ public class GameCellServiceImpl implements GameCellService {
 	 */
 	@VisibleForTesting
 	Function<GameCellOperation, Set<GameCellBean>> revealedOperationFunction() {
-		return gameCellOperation -> {
-			Long row = gameCellOperation.getRow();
-			Long column = gameCellOperation.getColumn();
-			GameBean gameBean = gameCellOperation.getGameBean();
+		return gameCellOperation -> obtainCellAndApplyFunction(
+				gameCellOperation,
+				cell -> {
+					if (gameCellHelper.isMine(cell)) {
+						gameCellDAO.updateCellOperationById(CellOperation.REVEALED, cell.getId());
+						throw new MineExplodedException(gameCellOperation.getRow(), gameCellOperation.getColumn(), gameCellOperation.getGameBean());
+					}
 
-			GameCellBean cell = getCellFromPosition(gameBean, row, column)
-					.orElseThrow(() -> new InvalidPositionException(row, column));
-
-			if (gameCellHelper.isMine(cell)) {
-				updateCellOperationById(CellOperation.REVEALED, cell.getId());
-				throw new MineExplodedException(row, column, gameBean);
-			}
-
-			if (CellOperation.REVEALED.equals(cell.getCellOperation())) {
-				// Cell is already revealed, nothing to do
-				return Sets.newHashSet();
-			}
-
-			Set<GameCellBean> updatedCells = populateMinesAround(cell, gameBean);
-			updatedCells.forEach(updatedCell -> updateCellOperationAndMinesAroundById(CellOperation.REVEALED, updatedCell.getMinesAround(), updatedCell.getId()));
-			return updatedCells;
-		};
+					Set<GameCellBean> updatedCells = populateMinesAround(cell, gameCellOperation.getGameBean());
+					updatedCells.forEach(updatedCell -> gameCellDAO.updateCellOperationAndMinesAroundById(CellOperation.REVEALED, updatedCell.getMinesAround(), updatedCell.getId()));
+					return updatedCells;
+				});
 	}
 
 	/**
@@ -193,7 +177,13 @@ public class GameCellServiceImpl implements GameCellService {
 	 */
 	@VisibleForTesting
 	Function<GameCellOperation, Set<GameCellBean>> flaggedOperationFunction() {
-		return gameCellOperation -> updateCellWithCellOperation(gameCellOperation, FLAGGED);
+		return gameCellOperation -> obtainCellAndApplyFunction(
+				gameCellOperation,
+				cell -> {
+					gameCellDAO.updateCellOperationById(FLAGGED, cell.getId());
+					cell.setCellOperation(FLAGGED);
+					return Sets.newHashSet(cell);
+				});
 	}
 
 	/**
@@ -201,7 +191,36 @@ public class GameCellServiceImpl implements GameCellService {
 	 */
 	@VisibleForTesting
 	Function<GameCellOperation, Set<GameCellBean>> questionMarkedFunction() {
-		return gameCellOperation -> updateCellWithCellOperation(gameCellOperation, QUESTION_MARKED);
+		return gameCellOperation -> obtainCellAndApplyFunction(
+				gameCellOperation,
+				cell -> {
+					gameCellDAO.updateCellOperationById(QUESTION_MARKED, cell.getId());
+					cell.setCellOperation(QUESTION_MARKED);
+					return Sets.newHashSet(cell);
+				});
+	}
+
+	/**
+	 * Private function that takes care of obtaining the {@link GameCellBean} using the row and column passed as parameter
+	 * inside {@link GameCellOperation} and apply the function passed as parameter
+	 */
+	@VisibleForTesting
+	Set<GameCellBean> obtainCellAndApplyFunction(GameCellOperation gameCellOperation,
+												 Function<GameCellBean, Set<GameCellBean>> function) {
+		Long row = gameCellOperation.getRow();
+		Long column = gameCellOperation.getColumn();
+		GameBean gameBean = gameCellOperation.getGameBean();
+
+		// We update the status from it in the DB
+		GameCellBean cell = getCellFromPosition(gameBean, row, column)
+				.orElseThrow(() -> new InvalidPositionException(row, column));
+
+		if (CellOperation.REVEALED.equals(cell.getCellOperation())) {
+			// Cell is already revealed, nothing to do
+			return Sets.newHashSet();
+		}
+
+		return function.apply(cell);
 	}
 
 	@VisibleForTesting
@@ -212,29 +231,17 @@ public class GameCellServiceImpl implements GameCellService {
 
 		// We update the status from it in the DB
 		GameCellBean existingCell = getCellFromPosition(gameBean, row, column)
-				.orElseThrow(() -> new RuntimeException("Cell is not found in the DB. Unexpected error."));
+				.orElseThrow(() -> new InvalidPositionException(row, column));
 
 		if (CellOperation.REVEALED.equals(existingCell.getCellOperation())) {
 			// Cell is already revealed, it can't be updated
 			return Sets.newHashSet();
 		}
 
-		updateCellOperationById(cellOperation, existingCell.getId());
+		gameCellDAO.updateCellOperationById(cellOperation, existingCell.getId());
 		existingCell.setCellOperation(cellOperation);
 
 		return Sets.newHashSet(existingCell);
-	}
-
-	@VisibleForTesting
-	@Transactional
-	void updateCellOperationById(CellOperation cellOperation, Long id) {
-		gameCellRepository.updateCellOperationById(cellOperation, id);
-	}
-
-	@VisibleForTesting
-	@Transactional
-	void updateCellOperationAndMinesAroundById(CellOperation cellOperation, Long minesAround, Long id) {
-		gameCellRepository.updateCellOperationAndMinesAroundById(cellOperation, minesAround, id);
 	}
 
 	/**

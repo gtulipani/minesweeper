@@ -1,9 +1,8 @@
 package com.minesweeper.service.impl;
 
 import static com.minesweeper.utils.TestConstants.COLUMNS_QUANTITY;
-import static com.minesweeper.utils.TestConstants.ID;
 import static com.minesweeper.utils.TestConstants.MINES_QUANTITY;
-import static com.minesweeper.utils.TestConstants.MINE_COLUMNS;
+import static com.minesweeper.utils.TestConstants.MINE_COLUMN;
 import static com.minesweeper.utils.TestConstants.MINE_ROW;
 import static com.minesweeper.utils.TestConstants.NUMBER_COLUMN;
 import static com.minesweeper.utils.TestConstants.NUMBER_ROW;
@@ -40,6 +39,7 @@ import com.minesweeper.bean.GameBean;
 import com.minesweeper.bean.GameCellBean;
 import com.minesweeper.bean.GameCellOperation;
 import com.minesweeper.component.GameCellHelper;
+import com.minesweeper.dao.GameCellDAO;
 import com.minesweeper.enums.CellContent;
 import com.minesweeper.enums.CellOperation;
 import com.minesweeper.exception.InvalidPositionException;
@@ -47,11 +47,10 @@ import com.minesweeper.exception.MineExplodedException;
 import com.minesweeper.mother.GameBeanMother;
 import com.minesweeper.mother.GameCellBeanMother;
 import com.minesweeper.mother.GameCellOperationMother;
-import com.minesweeper.repository.GameCellRepository;
 
 public class GameCellServiceImplTest {
 	@Mock
-	private GameCellRepository gameCellRepository;
+	private GameCellDAO gameCellDAO;
 	@Mock
 	private GameCellHelper gameCellHelper;
 
@@ -60,7 +59,7 @@ public class GameCellServiceImplTest {
 	@BeforeMethod
 	public void setup() {
 		MockitoAnnotations.initMocks(this);
-		gameCellService = new GameCellServiceImpl(gameCellRepository, gameCellHelper);
+		gameCellService = new GameCellServiceImpl(gameCellDAO, gameCellHelper);
 	}
 
 	@Test
@@ -132,7 +131,7 @@ public class GameCellServiceImplTest {
 
 	@Test
 	public void testMapToGameCellBean() {
-		Pair<Long, Long> pair = Pair.of(MINE_ROW, MINE_COLUMNS);
+		Pair<Long, Long> pair = Pair.of(MINE_ROW, MINE_COLUMN);
 		GameCellBean gameCellBean = GameCellBeanMother.mine().build();
 
 		assertThat(gameCellService.mapToGameCellBean(pair)).isEqualTo(gameCellBean);
@@ -207,7 +206,7 @@ public class GameCellServiceImplTest {
 				.withMessage("Mine exploded in row=%s, column=%s on game with id=%s", row, column, gameBean.getId());
 		verify(gameCellHelper, atLeastOnce()).isMine(any(GameCellBean.class));
 		verify(gameCellHelper, atLeastOnce()).hasPosition(any(GameCellBean.class), anyLong(), anyLong());
-		verify(gameCellRepository, times(1)).updateCellOperationById(CellOperation.REVEALED, mine.getId());
+		verify(gameCellDAO, times(1)).updateCellOperationById(CellOperation.REVEALED, mine.getId());
 		verifyNoMoreInteractions(gameCellHelper);
 	}
 
@@ -239,29 +238,7 @@ public class GameCellServiceImplTest {
 
 		assertThat(result).hasSize(1);
 		assertThat(result).contains(expected);
-		verify(gameCellRepository, times(1)).updateCellOperationAndMinesAroundById(CellOperation.REVEALED, 1L, number.getId());
-	}
-
-	@Test
-	public void testRevealedOperationFunction_whenNoCellIsFound_throwsInvalidPositionException() {
-		GameCellBean number = GameCellBeanMother.number().build();
-		GameBean gameBean = GameBeanMother.basic()
-				.gameCells(Sets.newHashSet(number))
-				.build();
-		GameCellOperation gameCellOperation = GameCellOperationMother.revealed()
-				.row(number.getRow())
-				.column(number.getColumn())
-				.gameBean(gameBean)
-				.build();
-		when(gameCellHelper.hasPosition(number, number.getRow(), number.getColumn())).thenReturn(false);
-
-		Function<GameCellOperation, Set<GameCellBean>> function = gameCellService.revealedOperationFunction();
-		assertThatExceptionOfType(InvalidPositionException.class)
-				.isThrownBy(() -> function.apply(gameCellOperation))
-				.withMessage("Invalid position with row=%s and column=%s", gameCellOperation.getRow(), gameCellOperation.getColumn());
-		verify(gameCellHelper, times(1)).hasPosition(number, gameCellOperation.getRow(), gameCellOperation.getColumn());
-		verifyNoMoreInteractions(gameCellHelper);
-		verifyZeroInteractions(gameCellRepository);
+		verify(gameCellDAO, times(1)).updateCellOperationAndMinesAroundById(CellOperation.REVEALED, 1L, number.getId());
 	}
 
 	@Test
@@ -288,9 +265,9 @@ public class GameCellServiceImplTest {
 						gameBean.getId());
 		verify(gameCellHelper, times(1)).hasPosition(mine, gameCellOperation.getRow(), gameCellOperation.getColumn());
 		verify(gameCellHelper, times(1)).isMine(mine);
-		verify(gameCellRepository, times(1)).updateCellOperationById(toUpdate, mine.getId());
+		verify(gameCellDAO, times(1)).updateCellOperationById(toUpdate, mine.getId());
 		verifyNoMoreInteractions(gameCellHelper);
-		verifyNoMoreInteractions(gameCellRepository);
+		verifyNoMoreInteractions(gameCellDAO);
 	}
 
 	@Test
@@ -315,7 +292,7 @@ public class GameCellServiceImplTest {
 		assertThat(function.apply(gameCellOperation)).isEqualTo(expected);
 
 		verify(gameCellHelper, times(1)).hasPosition(number, gameCellOperation.getRow(), gameCellOperation.getColumn());
-		verify(gameCellRepository, times(1)).updateCellOperationById(toUpdate, number.getId());
+		verify(gameCellDAO, times(1)).updateCellOperationById(toUpdate, number.getId());
 	}
 
 	@Test
@@ -341,7 +318,28 @@ public class GameCellServiceImplTest {
 		assertThat(function.apply(gameCellOperation)).isEqualTo(expected);
 
 		verify(gameCellHelper, times(1)).hasPosition(number, gameCellOperation.getRow(), gameCellOperation.getColumn());
-		verify(gameCellRepository, times(1)).updateCellOperationById(toUpdate, number.getId());
+		verify(gameCellDAO, times(1)).updateCellOperationById(toUpdate, number.getId());
+	}
+
+	@Test
+	public void testObtainCellAndApplyFunction_whenNoCellIsFound_throwsInvalidPositionException() {
+		GameCellBean number = GameCellBeanMother.number().build();
+		GameBean gameBean = GameBeanMother.basic()
+				.gameCells(Sets.newHashSet(number))
+				.build();
+		GameCellOperation gameCellOperation = GameCellOperationMother.revealed()
+				.row(number.getRow())
+				.column(number.getColumn())
+				.gameBean(gameBean)
+				.build();
+		when(gameCellHelper.hasPosition(number, number.getRow(), number.getColumn())).thenReturn(false);
+
+		assertThatExceptionOfType(InvalidPositionException.class)
+				.isThrownBy(() -> gameCellService.obtainCellAndApplyFunction(gameCellOperation, cell -> Sets.newHashSet()))
+				.withMessage("Invalid position with row=%s and column=%s", gameCellOperation.getRow(), gameCellOperation.getColumn());
+		verify(gameCellHelper, times(1)).hasPosition(number, gameCellOperation.getRow(), gameCellOperation.getColumn());
+		verifyNoMoreInteractions(gameCellHelper);
+		verifyZeroInteractions(gameCellDAO);
 	}
 
 	@Test
@@ -365,11 +363,11 @@ public class GameCellServiceImplTest {
 		assertThat(gameCellService.updateCellWithCellOperation(gameCellOperation, cellOperation)).isEqualTo(expected);
 
 		verify(gameCellHelper, times(1)).hasPosition(number, gameCellOperation.getRow(), gameCellOperation.getColumn());
-		verify(gameCellRepository, times(1)).updateCellOperationById(cellOperation, number.getId());
+		verify(gameCellDAO, times(1)).updateCellOperationById(cellOperation, number.getId());
 	}
 
 	@Test
-	public void testUpdateCellWithCellOperation_whenCellNotFound_throwsRuntimeException() {
+	public void testUpdateCellWithCellOperation_whenCellNotFound_throwsInvalidPositionException() {
 		GameCellBean number = GameCellBeanMother.number().build();
 		GameBean gameBean = GameBeanMother.basic()
 				.gameCells(Sets.newHashSet(number))
@@ -383,11 +381,11 @@ public class GameCellServiceImplTest {
 		when(gameCellHelper.hasPosition(number, number.getRow(), number.getColumn()))
 				.thenReturn(false);
 
-		assertThatExceptionOfType(RuntimeException.class)
+		assertThatExceptionOfType(InvalidPositionException.class)
 				.isThrownBy(() -> gameCellService.updateCellWithCellOperation(gameCellOperation, cellOperation))
-				.withMessage("Cell is not found in the DB. Unexpected error.");
+				.withMessage("Invalid position with row=%s and column=%s", number.getRow(), number.getColumn());
 		verify(gameCellHelper, times(1)).hasPosition(number, gameCellOperation.getRow(), gameCellOperation.getColumn());
-		verifyZeroInteractions(gameCellRepository);
+		verifyZeroInteractions(gameCellDAO);
 	}
 
 	@Test
@@ -408,30 +406,7 @@ public class GameCellServiceImplTest {
 		assertThat(gameCellService.updateCellWithCellOperation(gameCellOperation, cellOperation)).isEqualTo(Sets.newHashSet());
 
 		verify(gameCellHelper, times(1)).hasPosition(numberRevealed, gameCellOperation.getRow(), gameCellOperation.getColumn());
-		verifyZeroInteractions(gameCellRepository);
-	}
-
-	@Test
-	public void testUpdateCellOperationById() {
-		CellOperation cellOperation = CellOperation.REVEALED;
-		Long id = ID;
-
-		gameCellService.updateCellOperationById(cellOperation, id);
-
-		verify(gameCellRepository, times(1)).updateCellOperationById(cellOperation, id);
-		verifyNoMoreInteractions(gameCellRepository);
-	}
-
-	@Test
-	public void testUpdateCellOperationAndMinesAroundById() {
-		CellOperation cellOperation = CellOperation.REVEALED;
-		Long minesAround = 5L;
-		Long id = ID;
-
-		gameCellService.updateCellOperationAndMinesAroundById(cellOperation, minesAround, id);
-
-		verify(gameCellRepository, times(1)).updateCellOperationAndMinesAroundById(cellOperation, minesAround, id);
-		verifyNoMoreInteractions(gameCellRepository);
+		verifyZeroInteractions(gameCellDAO);
 	}
 
 	@Test

@@ -1,6 +1,6 @@
 package com.minesweeper.mother;
 
-import static com.minesweeper.utils.TestConstants.MINE_COLUMNS;
+import static com.minesweeper.utils.TestConstants.MINE_COLUMN;
 import static com.minesweeper.utils.TestConstants.MINES_AROUND;
 import static com.minesweeper.utils.TestConstants.MINE_ROW;
 import static com.minesweeper.utils.TestConstants.NUMBER_COLUMN;
@@ -14,7 +14,7 @@ public class GameCellBeanMother {
 	public static GameCellBean.GameCellBeanBuilder mine() {
 		return GameCellBean.builder()
 				.row(MINE_ROW)
-				.column(MINE_COLUMNS)
+				.column(MINE_COLUMN)
 				.cellContent(CellContent.MINE)
 				.cellOperation(CellOperation.NONE);
 	}

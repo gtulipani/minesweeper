@@ -11,6 +11,10 @@ public class GameCellOperationResponseMother {
 				.gameCellBeans(Sets.newHashSet(GameCellBeanMother.number().build()));
 	}
 
+	public static GameCellOperationResponse.GameCellOperationResponseBuilder gameWon() {
+		return GameCellOperationResponse.builder().gameCellOperationStatus(GameCellOperationStatus.GAME_WON);
+	}
+
 	public static GameCellOperationResponse.GameCellOperationResponseBuilder gameLost() {
 		return GameCellOperationResponse.builder()
 				.gameCellOperationStatus(GameCellOperationStatus.GAME_LOST)

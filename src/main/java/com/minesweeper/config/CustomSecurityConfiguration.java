@@ -8,19 +8,13 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 @Configuration
 @EnableWebSecurity
 public class CustomSecurityConfiguration extends WebSecurityConfigurerAdapter {
-
-	private ObjectMapper objectMapper = new ObjectMapper();
-
-    @Override
+	@Override
 	protected void configure(HttpSecurity http) throws Exception {
 		mainConfiguration(http);
 		noSecurityOnMatchers(http);
-		fallbackDenyAll(http);
 	}
 
 	private void mainConfiguration(HttpSecurity http) throws Exception {
@@ -43,13 +37,6 @@ public class CustomSecurityConfiguration extends WebSecurityConfigurerAdapter {
 				.and()
 				.authorizeRequests()
 				.requestMatchers(EndpointRequest.toAnyEndpoint())
-				.denyAll();
-	}
-
-	private void fallbackDenyAll(HttpSecurity http) throws Exception {
-		http
-				.authorizeRequests()
-				.anyRequest()
 				.denyAll();
 	}
 }

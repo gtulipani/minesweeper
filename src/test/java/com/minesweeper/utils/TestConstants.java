@@ -15,7 +15,7 @@ public class TestConstants {
 	public static final long NUMBER_ROW = 30;
 	public static final long NUMBER_COLUMN = 20;
 	public static final long MINE_ROW = 20;
-	public static final long MINE_COLUMNS = 10;
+	public static final long MINE_COLUMN = 10;
 	public static final long MINES_QUANTITY = 5;
 	public static final long MINES_AROUND = 4;
 }
