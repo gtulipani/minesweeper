@@ -70,7 +70,7 @@ public class GameDAOImpl implements GameDAO {
 	@Override
 	@Transactional
 	public void updateGameStatusById(GameStatus gameStatus, Long gameId) {
-		log.info("Updated game status to %s for game with id=%s", gameStatus, gameId);
+		log.info("Updated game status to {} for game with id={}", gameStatus, gameId);
 		gameRepository.updateGameStatusById(gameStatus, gameId);
 	}
 }

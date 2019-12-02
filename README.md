@@ -16,6 +16,11 @@ Microservice that handles the Server required to play the classic game [Mineswee
 ### Run Locally
 1. Execute `./gradlew bootRun`
 
+### Run in Heroku
+1. The application includes a **Procfile** and a **system.properties** file which can be used to deploy the application in
+[Heroku](https://www.heroku.com/). The only detail to take into account, is that a MySQL DB needs to be deployed for the
+application to work.
+
 ## Technologies
 ### Spring
 The Application is a standard [Spring Boot](https://spring.io/) Application and it's conformed by the following layers:
