@@ -19,6 +19,8 @@ buildscript {
 		comSunXmlBindVersion = '2.3.2'
 		apacheCommonsLang3Version = '3.9'
 		googleCollectionsVersion = '1.0-rc2'
+		swagger2Version = '2.9.2'
+		googleGuavaVersion = '28.1-jre'
 	}
 	repositories {
 		jcenter()
@@ -102,6 +104,7 @@ dependencies {
 
 	compileOnly group: 'org.projectlombok', name: 'lombok', version: "${lombokVersion}"
 
+	compile group: 'com.google.guava', name: 'guava', version: "${googleGuavaVersion}"
 	compile group: 'org.springframework.boot', name: 'spring-boot-starter-actuator', version: "${springBootVersion}"
 	compile group: 'org.springframework.boot', name: 'spring-boot-autoconfigure', version: "${springBootVersion}"
 	compile group: 'org.springframework.boot', name: 'spring-boot-starter', version: "${springBootVersion}"
@@ -121,7 +124,8 @@ dependencies {
 	compile group: 'com.sun.xml.bind', name: 'jaxb-impl', version: "${comSunXmlBindVersion}"
 	compile group: 'org.apache.commons', name: 'commons-lang3', version: "${apacheCommonsLang3Version}"
 	compile group: 'com.google.collections', name: 'google-collections', version: "${googleCollectionsVersion}"
-
+	compile group: 'io.springfox', name: 'springfox-swagger2', version: "${swagger2Version}"
+	compile group: 'io.springfox', name: 'springfox-swagger-ui', version: "${swagger2Version}"
 
 	testCompileOnly group: 'org.projectlombok', name: 'lombok', version: "${lombokVersion}"
 

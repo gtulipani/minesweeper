@@ -3,8 +3,6 @@ server:
   tomcat:
     max-threads: 30
   use-forward-headers: true
-  servlet:
-    context-path: /api/v1
 
 logging:
   level:
