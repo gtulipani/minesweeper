@@ -131,6 +131,11 @@ Example response payload with all the new cells to be revealed:
 }
 ```
 
+## Swagger
+The project includes the [Swagger](https://swagger.io/) plugin, that is useful to navigate the API requests and expected
+responses. The [Swagger UI](https://swagger.io/tools/swagger-ui/) is available on `/swagger-ui.html` path, and can be used
+to hit the Project APIs.
+
 ## Game Logic
 The same way as the classic *minesweeper*, the game starts with its creation, when the mines are generated randomly on many places.
 The user can perform any of the following three operations:
