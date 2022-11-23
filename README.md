@@ -2,7 +2,7 @@
 # minesweeper
 ## Description
 Microservice that handles the Server required to play the classic game [Minesweeper](https://en.wikipedia.org/wiki/Minesweeper_(video_game)).
-  
+ 
 ## Building and running
 ### List Tasks
 1. Navigate to the base folder
