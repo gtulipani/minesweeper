@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/gtulipani/minesweeper.svg?branch=master)](https://travis-ci.org/gtulipani/minesweeper)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fgtulipani%2Fminesweeper.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fgtulipani%2Fminesweeper?ref=badge_shield)
 # minesweeper
 ## Description
 Microservice that handles the Server required to play the classic game [Minesweeper](https://en.wikipedia.org/wiki/Minesweeper_(video_game)).
@@ -154,3 +155,7 @@ every PR and Build (including `master`). The status can be found at the top of t
 
 ## More Stats
 The project includes a total of **169** Unit Tests.
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fgtulipani%2Fminesweeper.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fgtulipani%2Fminesweeper?ref=badge_large)
